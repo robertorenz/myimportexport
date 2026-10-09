@@ -596,7 +596,9 @@ becomes a sheet named after it. JSON gives one collection per table and XML one 
 TSV write one file per table.</p>
 <p>To skip the ticking next time, click <b>Save as...</b> next to <b>Favorite</b> and give the set a name,
 such as <i>Month end</i>. The favorite keeps the ticked tables, the format and the file. Next time, pick it
-from the <b>Favorite</b> list and click <b>Export</b>. <b>Delete</b> removes the chosen favorite.</p>''')
+from the <b>Favorite</b> list and click <b>Export</b>. <b>Delete</b> removes the chosen favorite.</p>
+<p>To skip the window too, populate the <b>MyImportExport - Run a favorite (no window)</b> control template
+on any window and type the favorite's name: one click exports it.</p>''')
     add(note('warn', 'Replace all deletes first', '<p><i>Replace all records</i> empties the table before it '
         'adds the rows, and asks first. Use it for lookup tables you reload from a master file.</p>'))
     add('<h2 id="hand"><span class="k">Without the template</span>The smallest program by hand</h2>')
@@ -803,10 +805,13 @@ The <b>Favorite</b> list in the window loads one, <b>Save as...</b> stores the c
 favorite in its own <code>[MIE__Favorite name]</code> section. Names are matched in any case and can't contain
 <code>| [ ] = ; ,</code>.</p>''')
     add(code("MIE_ExportTables('@Month end')                     ! window opens with the favorite loaded\n"
+             "MIE_RunFavorite('Month end')                       ! no window: export and show the result\n"
              "\n"
-             "IF MIE.LoadFavorite('Month end') = 0               ! or no window at all\n"
+             "IF MIE.LoadFavorite('Month end') = 0               ! class: no window, no messages\n"
              "  MIE.ExportTables()\n"
              "END"))
+    add('<p>The <code>MyImportExportFavorite</code> control template puts a <b>Run favorite</b> button on a '
+        'window that does the second line.</p>')
     add('<h2 id="saved"><span class="k">How-to</span>Saved mappings</h2>')
     add('<p>After every successful run the window calls <code>SaveMap</code>, and the generated procedure calls '
         '<code>LoadMap</code> before it opens the window. Each field line holds '
@@ -975,11 +980,11 @@ def build_template_guide():
     add = B.append
     byname = {t['name']: t for t in TEMPLATES}
     add('<h2 id="set"><span class="k">Overview</span>The template set</h2>')
-    add('<p>Template class <code>MyImportExport</code> (%s), family ABC and Clarion. Three templates, generated '
+    add('<p>Template class <code>MyImportExport</code> (%s), family ABC and Clarion. Four templates, generated '
         'from <code>template\\win\\MyImportExport.tpl</code> and <code>.tpw</code>:</p>' % esc(TPLVER))
     add(table(['Template', 'Kind', 'What it is for'], [
         ['<code>%s</code>' % t['name'], t['kind'].title(), esc(t['title'].split(' - ', 1)[-1])] for t in TEMPLATES]))
-    add('''<p>Add the global extension first: the other two require it. Every table in the dictionary is
+    add('''<p>Add the global extension first: the others require it. Every table in the dictionary is
 offered unless you exclude it, so a table added to the dictionary next year shows up in the window after
 the next generate, with no other change.</p>''')
 
@@ -1074,11 +1079,22 @@ refreshed: <code>ThisWindow.Reset(1)</code> in ABC, which re-reads every browse.
              "  MIE_ExportTables()\n"
              "END"))
 
+    f = byname['MyImportExportFavorite']
+    add('<h2 id="favbutton"><span class="k">Control</span>MyImportExportFavorite</h2>')
+    add('''<p>One button that exports a favorite saved in the <b>Export tables</b> window, with no window: its
+tables go to its file in its format, an existing file is replaced, and the result is shown at the end. Put
+several on a window, one per favorite. Leave <b>Favorite</b> blank and the button pops a menu of the saved
+favorites instead. Favorites are kept in the INI file, so the name is typed here, not picked from a list.</p>''')
+    add(prompt_table(f, ''))
+    add(code("OF ?MIERunFavorite\n"
+             "  MIE_RunFavorite('Month end')"))
+
     k = byname['MyImportExportCall']
     add('<h2 id="call"><span class="k">Code</span>MyImportExportCall</h2>')
     add('<p>A code template for any embed: a menu item, a button of your own, a process. It writes one call to '
-        '<code>MIE_ImportExport</code>, or to <code>MIE_ExportTables</code> in the <i>Export several tables</i> '
-        'mode (the table prompt is then ignored).</p>')
+        '<code>MIE_ImportExport</code>, to <code>MIE_ExportTables</code> in the <i>Export several tables</i> '
+        'mode, or to <code>MIE_RunFavorite</code> in the <i>Run a favorite (no window)</i> mode (the table '
+        'prompt is then ignored).</p>')
     add(prompt_table(k, ''))
     add(code("LOC:Done = MIE_ImportExport('',0)             ! picker, user chooses the mode\n"
              "IF LOC:Done\n"
@@ -1118,7 +1134,7 @@ refreshed: <code>ThisWindow.Reset(1)</code> in ABC, which re-reads every browse.
     nav = [('Overview', [('set', '')]),
            ('Global extension', [('global', '')] + [('g-' + slug(t), '') for t in gtabs] +
                                 [('g-writes', ''), ('g-module', ''), ('g-hooks', ''), ('g-fields', ''), ('g-multi', '')]),
-           ('Window and code', [('buttons', ''), ('call', ''), ('embeds', '')]),
+           ('Window and code', [('buttons', ''), ('favbutton', ''), ('call', ''), ('embeds', '')]),
            ('Recipes', [('multidll', ''), ('regen', ''), ('next3', '')])]
     return page('template-guide.html', 'MyImportExport Template Guide', 'Volume 3', 'Template Guide',
                 'Every template, tab, prompt and embed point, and what the generator writes into your app. '
@@ -1222,6 +1238,14 @@ derived class only.</p>''')
     ]))
     add(usecode("MIE_ExportTables('Customer,Product,Invoice')     ! pre-ticked, user picks format and file\n"
                 "MIE_ExportTables('@Month end')                   ! a saved favorite"))
+    add('<h3 id="proc-fav">MIE_RunFavorite</h3>')
+    add('<p>Also generated: exports a saved favorite with no window.</p>')
+    add(code("MIE_RunFavorite(STRING pName),BYTE,PROC"))
+    add(table(['Parameter', 'Meaning'], [
+        ['<code>pName</code>', 'The favorite, in any case. Blank pops a menu of the saved favorites.'],
+        ['returns', '1 when exported, 0 when cancelled, not found or failed (the user has been told why).'],
+    ]))
+    add(usecode("MIE_RunFavorite('Month end')                     ! a menu item, a button, a scheduled job"))
 
     add('<h2 id="helper"><span class="k">Helper</span>MIEConvert.exe</h2>')
     add('<p>The class runs it for you, but it is an ordinary command-line program and can be used from scripts. '
@@ -1252,7 +1276,7 @@ derived class only.</p>''')
            ('Properties', [('props', '')] + [('p-' + slug(g), '') for g in pgroups]),
            ('Methods', [('meths', '')] + [('m-' + slug(g), '') for g in mgroups]),
            ('Types', [('queues', '')] + [('q-' + slug(q['name']), '') for q in QUEUES] + [('eq', '')]),
-           ('Procedure and helper', [('proc', ''), ('proc-multi', ''), ('helper', ''), ('h-cmds', ''), ('h-opts', ''), ('next4', '')])]
+           ('Procedure and helper', [('proc', ''), ('proc-multi', ''), ('proc-fav', ''), ('helper', ''), ('h-cmds', ''), ('h-opts', ''), ('next4', '')])]
     return page('reference.html', 'MyImportExport Reference', 'Volume 4', 'Reference',
                 'Every property, method, equate and helper option &mdash; generated from the sources, with a '
                 'worked piece of Clarion against each member.',

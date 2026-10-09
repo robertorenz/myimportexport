@@ -12,11 +12,14 @@
 #!                            and (where requested) generates the global
 #!                            procedure MIE_ImportExport(STRING,BYTE=0),BYTE
 #!                            and MIE_ExportTables(<STRING>),BYTE (several
-#!                            tables into one file) in their own module
+#!                            tables into one file) and MIE_RunFavorite(STRING),
+#!                            BYTE (a saved favorite, no window) in their own module
 #!                            <program>_MIE.clw, sharing one dictionary-bound
 #!                            class MIE_DictClass (SetupTable + ABC hooks).
 #!     MyImportExportButtons  WINDOW control template: Import... / Export...
 #!                            buttons (or one button that asks).
+#!     MyImportExportFavorite WINDOW control template: one button that exports
+#!                            a saved favorite with no window.
 #!     MyImportExportCall     CODE template: call MIE_ImportExport anywhere.
 #!
 #!   Field selection rules (per dictionary table, see MyImportExport.tpw)
@@ -186,11 +189,13 @@
      MODULE('%MIEModuleFile')
        MIE_ImportExport(STRING,BYTE=0),BYTE,PROC
        MIE_ExportTables(<STRING>),BYTE,PROC
+       MIE_RunFavorite(STRING),BYTE,PROC
      END
   #ELSE
      MODULE('MIE_ImportExport_DLL')
        MIE_ImportExport(STRING,BYTE=0),BYTE,PROC,DLL
        MIE_ExportTables(<STRING>),BYTE,PROC,DLL
+       MIE_RunFavorite(STRING),BYTE,PROC,DLL
      END
   #ENDIF
 #ENDAT
@@ -264,6 +269,7 @@
 ; MyImportExport: the generated procedures
   %[55](LINKNAME('MIE_ImportExport(STRING,BYTE),BYTE')) @?
   %[55](LINKNAME('MIE_ExportTables(<<STRING>),BYTE')) @?
+  %[55](LINKNAME('MIE_RunFavorite(STRING),BYTE')) @?
   #ENDIF
   #IF(%MIEDoExportClass)
     #IF(%MIEIncFound)
@@ -374,6 +380,39 @@ MIE_ExportTables()
 #!
 #!
 #!============================================================================
+#! CONTROL TEMPLATE - run a favorite with no window
+#!============================================================================
+#CONTROL(MyImportExportFavorite,'MyImportExport - Run a favorite (no window)'),WINDOW,MULTI,REQ(MyImportExportGlobal),DESCRIPTION('Run favorite: ' & CHOOSE(%MIEFavName='','pick at run time',%MIEFavName))
+  CONTROLS
+    BUTTON('Export &favorite'),AT(,,64,14),USE(?MIERunFavorite)
+  END
+#PROMPT('&Favorite:',@s40),%MIEFavName,DEFAULT('')
+#DISPLAY('The name of a favorite saved in the Export tables window (any case).')
+#DISPLAY('Blank = the button pops a menu of the saved favorites.')
+#DISPLAY('The click exports its tables to its file in its format: no window,')
+#DISPLAY('an existing file is replaced, and the result is shown at the end.')
+#PROMPT('Button &text:',@s60),%MIEFavText,DEFAULT('')
+#DISPLAY('Blank = the text set in the window designer.')
+#!
+#ATSTART
+  #DECLARE(%MIEFavCtl)
+  #FOR(%Control),WHERE(%ControlInstance = %ActiveTemplateInstance)
+    #IF(%ControlOriginal='?MIERunFavorite')
+      #SET(%MIEFavCtl,%Control)
+    #ENDIF
+  #ENDFOR
+#ENDAT
+#!
+#AT(%AfterWindowOpening),WHERE(%MIEFavText<>'' AND %MIEFavCtl<>'')
+%MIEFavCtl{PROP:Text} = '%(QUOTE(%MIEFavText))'
+#ENDAT
+#!
+#AT(%ControlEventHandling,%MIEFavCtl,'Accepted')
+MIE_RunFavorite('%(QUOTE(%MIEFavName))')
+#ENDAT
+#!
+#!
+#!============================================================================
 #! CODE TEMPLATE - call MIE_ImportExport
 #!============================================================================
 #CODE(MyImportExportCall,'MyImportExport - import / export a table'),REQ(MyImportExportGlobal),DESCRIPTION('MyImportExport: ' & %MIECallMode & ' - ' & CHOOSE(%MIECallTableSource='A specific table',%MIECallTable,%MIECallTableSource))
@@ -381,12 +420,13 @@ MIE_ExportTables()
 #ENABLE(%MIECallTableSource='A specific table'),CLEAR
   #PROMPT('&Specific table:',FROM(%File)),%MIECallTable,DEFAULT('')
 #ENDENABLE
-#PROMPT('&Mode:',DROP('Ask the user|Export|Import|Export several tables')),%MIECallMode,DEFAULT('Ask the user')
+#PROMPT('&Mode:',DROP('Ask the user|Export|Import|Export several tables|Run a favorite (no window)')),%MIECallMode,DEFAULT('Ask the user')
 #DISPLAY('Export several tables: the user ticks the tables; the table prompt is ignored.')
-#ENABLE(%MIECallMode='Export several tables'),CLEAR
-  #PROMPT('Start with &favorite (optional):',@s40),%MIECallFavorite,DEFAULT('')
-  #DISPLAY('A favorite saved in the Export tables window: its tables are ticked')
-  #DISPLAY('and its format and file filled in when the window opens.')
+#ENABLE(%MIECallMode='Export several tables' OR %MIECallMode='Run a favorite (no window)'),CLEAR
+  #PROMPT('&Favorite:',@s40),%MIECallFavorite,DEFAULT('')
+  #DISPLAY('A favorite saved in the Export tables window. Export several tables:')
+  #DISPLAY('the window opens with it loaded (optional). Run a favorite: exported')
+  #DISPLAY('with no window (blank = a menu of the saved favorites).')
 #ENDENABLE
 #PROMPT('Store the &result in (optional):',FIELD),%MIECallResult,DEFAULT('')
 #DISPLAY('Result: 1 = something was imported / exported, 0 = cancelled / failed.')
@@ -411,7 +451,9 @@ MIE_ExportTables()
 #ELSE
   #SET(%MIECallModeEquate,'0')
 #ENDCASE
-#IF(%MIECallMode='Export several tables')
+#IF(%MIECallMode='Run a favorite (no window)')
+  #SET(%MIECallExpr,'MIE_RunFavorite(''' & QUOTE(%MIECallFavorite) & ''')')
+#ELSIF(%MIECallMode='Export several tables')
   #IF(%MIECallFavorite)
     #SET(%MIECallExpr,'MIE_ExportTables(''@' & QUOTE(%MIECallFavorite) & ''')')
   #ELSE

@@ -193,10 +193,11 @@ The <b>Favorite</b> list in the window loads one, <b>Save as...</b> stores the c
 <code>IniFile</code>: the names in <code>[MIE__Tables] Favorites=</code>, separated by <code>|</code>, and each
 favorite in its own <code>[MIE__Favorite name]</code> section. Names are matched in any case and can't contain
 <code>| [ ] = ; ,</code>.</p><pre class="code" data-lang="clarion"><code>MIE_ExportTables(&#x27;@Month end&#x27;)                     ! window opens with the favorite loaded
+MIE_RunFavorite(&#x27;Month end&#x27;)                       ! no window: export and show the result
 
-IF MIE.LoadFavorite(&#x27;Month end&#x27;) = 0               ! or no window at all
+IF MIE.LoadFavorite(&#x27;Month end&#x27;) = 0               ! class: no window, no messages
   MIE.ExportTables()
-END</code></pre><h2 id="saved"><span class="k">How-to</span>Saved mappings</h2><p>After every successful run the window calls <code>SaveMap</code>, and the generated procedure calls <code>LoadMap</code> before it opens the window. Each field line holds <i>selected | order | header | source column</i>:</p><pre class="code" data-lang="ini"><code>[MIE_Customer]
+END</code></pre><p>The <code>MyImportExportFavorite</code> control template puts a <b>Run favorite</b> button on a window that does the second line.</p><h2 id="saved"><span class="k">How-to</span>Saved mappings</h2><p>After every successful run the window calls <code>SaveMap</code>, and the generated procedure calls <code>LoadMap</code> before it opens the window. Each field line holds <i>selected | order | header | source column</i>:</p><pre class="code" data-lang="ini"><code>[MIE_Customer]
 Mode=2
 Format=XLSX
 FileName=C:\exchange\customers.xlsx

@@ -45,6 +45,7 @@ This copies `template\win\*.tpl/.tpw` to `accessory\template\win`, `libsrc\win\*
    Settings: helper path, INI file for saved mappings, default format, tables to exclude,
    "copy the helper to the output folder", delete mode for *Replace all*.
 2. Then either:
+   - **Control template** `MyImportExportFavorite`: one button that exports a saved favorite with no window.
    - **Control template** `MyImportExportButtons` on a browse: *Import...* / *Export...* buttons,
      optionally *Export tables...* (or one button with a menu). The browse refreshes after an import.
    - **Code template** `MyImportExportCall`: a chosen table, the primary table, a table picker, or
@@ -78,12 +79,18 @@ removes it. From code:
 
 ```clarion
   MIE_ExportTables('@Month end')            ! window opens with the favorite loaded
-  IF MIE.LoadFavorite('Month end') = 0      ! class: no window at all
+  MIE_RunFavorite('Month end')              ! no window: export and show the result
+  IF MIE.LoadFavorite('Month end') = 0      ! class: no window, no messages
     MIE.ExportTables()
   END
 ```
 
-The code template's *Export several tables* mode has a *Start with favorite* prompt. Favorites are
+**Run a favorite with no window:** populate the control template *MyImportExport - Run a favorite
+(no window)* on any window and type the favorite's name. One click exports its tables to its file, replacing
+it, and shows the result. Leave the name blank and the button shows a menu of the saved favorites. You can
+also call `MIE_RunFavorite('Month end')` from your own code, and the code template has a
+*Run a favorite (no window)* mode. Its *Export several tables* mode can open the window with a favorite
+already loaded. Favorites are
 kept in the INI file (`[MIE__Tables] Favorites=` and one `[MIE__Favorite name]` section each).
 
 Ship `MIEConvert.exe` next to your program's exe.
@@ -168,7 +175,7 @@ Derive the class to change table I/O (`OpenTable`, `InsertRecord`, `UpdateRecord
 | `helper\MIEConvert\` | C# source of the helper (`dotnet build -c Release`), see `helper\README.md` |
 | `helper\tests\` | helper round-trip tests (`python run_tests.py`, needs openpyxl, xlrd, xlwt) |
 | `test\` | headless Clarion test: `pwsh test\build.ps1` exports and re-imports every format |
-| `example\` | demo dictionary (`.dctx`) and app (`.txa`) using all three templates |
+| `example\` | demo dictionary (`.dctx`) and app (`.txa`) using the templates |
 | `docs\` | the manual (`build-docs.py` builds the four volumes from the sources), `DESIGN.md` (contract between template, class and helper) |
 
 ## Tests

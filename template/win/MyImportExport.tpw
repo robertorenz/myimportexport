@@ -449,6 +449,28 @@ PickTable            ROUTINE
   CLOSE(PickWindow)
 
 !----------------------------------------------------------------------------
+! MIE_RunFavorite(pName)
+!   Exports a favorite saved in the Export tables window, with no window:
+!   its tables, format and file. pName = '' pops a menu of the favorites.
+!   returns : 1 = exported, 0 = cancelled / failed
+!----------------------------------------------------------------------------
+MIE_RunFavorite      PROCEDURE(STRING pName)
+Result               BYTE
+ThisMIE              MIE_DictClass
+#EMBED(%MIERunFavData,'MIE_RunFavorite - local data'),DATA,TREE('MyImportExport|MIE_RunFavorite procedure|0 - Local data')
+  CODE
+  ThisMIE.Prepare()
+#FOR(%MIETables)
+  #FIX(%File,%MIETables)
+  ThisMIE.AddTable('%File','%(QUOTE(%FileDescription))')
+#ENDFOR
+  #EMBED(%MIEBeforeRunFav,'MIE_RunFavorite - before the export (tables added)'),TREE('MyImportExport|MIE_RunFavorite procedure|1 - Before the export')
+  Result = ThisMIE.RunFavorite(pName)
+  #EMBED(%MIEAfterRunFav,'MIE_RunFavorite - after the export (Result = 1 when exported)'),TREE('MyImportExport|MIE_RunFavorite procedure|2 - After the export')
+  ThisMIE.Kill()
+  RETURN Result
+
+!----------------------------------------------------------------------------
 ! MIE_ExportTables(pTables)
 !   pTables : optional comma-separated table labels to pre-select
 !             (omitted / blank = the selection saved last time)

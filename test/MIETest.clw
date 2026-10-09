@@ -17,6 +17,7 @@
     MultiTest()
     PicturesTest()
     FavTest()
+    RunFavTest()
     Check(BYTE pOk,STRING pWhat)
     MultiOne(STRING pFormat,STRING pExt)
   END
@@ -95,6 +96,7 @@ SetupTable             PROCEDURE(STRING pName),BYTE,DERIVED
   MultiTest()
   PicturesTest()
   FavTest()
+  RunFavTest()
   WriteLog('FAILURES: ' & Failures)
   HALT(Failures)
 
@@ -427,3 +429,33 @@ Ini                  CSTRING(260)
   Check(CHOOSE(Fav.LoadFavorite('Price list') = 0),'other favorite still loads')
   GET(Fav.Tables,2); Check(Fav.Tables.Selected,'CustCopy ticked')
   Fav.Kill()
+
+RunFavTest           PROCEDURE
+Ini                  CSTRING(260)
+Out                  CSTRING(260)
+  CODE
+  WriteLog('RUN FAVORITE')
+  Ini = LONGPATH() & '<92>mierun.ini'
+  Out = LONGPATH() & '<92>out_fav.json'
+  REMOVE(Ini)
+  REMOVE(Out)
+  TestMie.Init()
+  TestMie.Silent  = 1
+  TestMie.IniFile = Ini
+  TestMie.AddTable('Customer','Customers')
+  TestMie.AddTable('CustCopy','Copy of customers')
+  GET(TestMie.Tables,1); TestMie.Tables.Selected = 1; PUT(TestMie.Tables)
+  GET(TestMie.Tables,2); TestMie.Tables.Selected = 1; PUT(TestMie.Tables)
+  TestMie.Format = 'JSON'; TestMie.FileName = Out
+  TestMie.SaveFavorite('Nightly')
+  TestMie.Kill()
+  TestMie.Init()                                    ! a fresh object, as a button click would have
+  TestMie.Silent  = 1
+  TestMie.IniFile = Ini
+  TestMie.AddTable('Customer','Customers')
+  TestMie.AddTable('CustCopy','Copy of customers')
+  Check(CHOOSE(TestMie.RunFavorite('nightly') = 1),'RunFavorite exported')
+  Check(EXISTS(Out),'favorite file written')
+  Check(CHOOSE(RECORDS(TestMie.Batch) = 2),'both tables in it')
+  Check(CHOOSE(TestMie.RunFavorite('No such') = 0),'unknown favorite refused')
+  TestMie.Kill()

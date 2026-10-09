@@ -159,6 +159,7 @@ FavoriteNames          PROCEDURE,STRING                               ! saved fa
 SaveFavorite           PROCEDURE(STRING pName),BYTE,PROC              ! store the ticked tables, format, file. 0 = ok
 LoadFavorite           PROCEDURE(STRING pName),BYTE,PROC              ! tick its tables, restore format, file. 0 = ok
 DeleteFavorite         PROCEDURE(STRING pName)
+RunFavorite            PROCEDURE(STRING pName),BYTE,PROC              ! export a favorite, no window ('' = menu). 1 = exported
 FavoriteClean          PROCEDURE(STRING pName),STRING                 ! name without | [ ] = ; , (max 40)
 ! --- virtual hooks ------------------------------------------------------
 OpenTable              PROCEDURE,BYTE,VIRTUAL

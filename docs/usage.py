@@ -172,6 +172,8 @@ METHODS = {
                   "IF MIE.LoadFavorite('Month end') = 0\n"
                   "  MIE.ExportTables()                       ! no window\n"
                   "END"),
+ 'RunFavorite': ("Exports a favorite with no window: loads it, writes its tables to its file in its format (an existing file is replaced) and shows the result. A blank name pops a menu of the saved favorites. Returns 1 when exported, 0 when cancelled, not found or failed. The MyImportExportFavorite button and MIE_RunFavorite call it.",
+                 "MIE.RunFavorite('Month end')                ! or '' for a menu"),
  'DeleteFavorite': ("Removes a favorite and its INI section. Tables and their saved column mappings are not touched.",
                     "MIE.DeleteFavorite('Month end')"),
  'FavoriteClean': ("The name as it will be saved: | [ ] = ; and , removed, leading spaces dropped, at most 40 characters.",

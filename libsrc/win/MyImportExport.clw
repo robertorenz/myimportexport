@@ -1461,6 +1461,55 @@ N                      CSTRING(41)
   SELF.Favorite = N
   RETURN 0
 
+! Export a favorite without the window: load it, export, show the result.
+! pName = '' pops a menu of the saved favorites.
+MyImportExportClass.RunFavorite PROCEDURE(STRING pName)
+N                      CSTRING(41)
+M                      CSTRING(8192)
+Item                   CSTRING(90)
+K                      LONG
+I                      LONG
+RC                     BYTE
+  CODE
+  N = SELF.FavoriteClean(pName)
+  IF N = ''
+    IF SELF.FavoriteNames() = ''
+      SELF.ShowMessage('There are no saved favorites yet.<13,10>Tick the tables in the Export tables window and click Save as... to make one.','Export favorite',ICON:Exclamation)
+      RETURN 0
+    END
+    K = 1
+    LOOP
+      Item = SELF.FavoriteName(K)
+      IF Item = '' THEN BREAK.
+      IF LEN(M) + LEN(Item) * 2 + 2 > SIZE(M) - 1 THEN BREAK.
+      IF M <> '' THEN M = M & '|'.
+      LOOP I = 1 TO LEN(Item)                   ! & is the hot-key marker in a menu
+        M = M & CHOOSE(Item[I] = '&','&&',Item[I])
+      END
+      K += 1
+    END
+    K = POPUP(M)
+    IF K = 0 THEN RETURN 0.
+    N = SELF.FavoriteName(K)
+  END
+  IF SELF.LoadFavorite(N)
+    SELF.ShowMessage('The favorite "' & N & '" was not found.<13,10>It may have been deleted or saved in another INI file.','Export favorite',ICON:Exclamation)
+    RETURN 0
+  END
+  IF SELF.FileName = ''
+    SELF.ShowMessage('The favorite "' & N & '" has no file. Open Export tables, choose a file and save it again.','Export favorite',ICON:Exclamation)
+    RETURN 0
+  END
+  SETCURSOR(CURSOR:Wait)
+  RC = SELF.ExportTables()
+  SETCURSOR()
+  IF RC
+    SELF.ShowMessage(SELF.ErrorText,'Export favorite',ICON:Exclamation)
+    RETURN 0
+  END
+  SELF.ShowMessage(SELF.ResultText(),'Export complete: ' & N)
+  RETURN 1
+
 MyImportExportClass.DeleteFavorite PROCEDURE(STRING pName)
 N                      CSTRING(41)
 Sec                    CSTRING(64)

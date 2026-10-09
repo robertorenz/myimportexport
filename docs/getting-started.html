@@ -202,7 +202,9 @@ becomes a sheet named after it. JSON gives one collection per table and XML one 
 TSV write one file per table.</p>
 <p>To skip the ticking next time, click <b>Save as...</b> next to <b>Favorite</b> and give the set a name,
 such as <i>Month end</i>. The favorite keeps the ticked tables, the format and the file. Next time, pick it
-from the <b>Favorite</b> list and click <b>Export</b>. <b>Delete</b> removes the chosen favorite.</p><aside class="note note--warn"><p class="note__t">Replace all deletes first</p><div class="note__b"><p><i>Replace all records</i> empties the table before it adds the rows, and asks first. Use it for lookup tables you reload from a master file.</p></div></aside><h2 id="hand"><span class="k">Without the template</span>The smallest program by hand</h2><p>The class works on its own. Name the table, offer its fields, open the window:</p><pre class="code" data-lang="clarion"><code>  PROGRAM
+from the <b>Favorite</b> list and click <b>Export</b>. <b>Delete</b> removes the chosen favorite.</p>
+<p>To skip the window too, populate the <b>MyImportExport - Run a favorite (no window)</b> control template
+on any window and type the favorite's name: one click exports it.</p><aside class="note note--warn"><p class="note__t">Replace all deletes first</p><div class="note__b"><p><i>Replace all records</i> empties the table before it adds the rows, and asks first. Use it for lookup tables you reload from a master file.</p></div></aside><h2 id="hand"><span class="k">Without the template</span>The smallest program by hand</h2><p>The class works on its own. Name the table, offer its fields, open the window:</p><pre class="code" data-lang="clarion"><code>  PROGRAM
 
   INCLUDE(&#x27;MyImportExport.inc&#x27;),ONCE
 
