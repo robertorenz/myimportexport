@@ -1019,6 +1019,9 @@ the next generate, with no other change.</p>''')
         ['<code>MIEEXCLUDE</code> in a field\'s or GROUP\'s User Options', 'Not offered.'],
         ['<code>MIEEXCLUDE</code> in a table\'s User Options, or ticked under Exclude tables', 'The whole table is left out.'],
         ['ALIAS tables', 'Left out: the real table is offered instead.'],
+        ["In-memory tables: <code>DRIVER('MEMORY')</code>, or declared as QUEUE / GROUP", 'Left out while <em>Skip in-memory tables</em> is ticked (the default).'],
+        ['A table no procedure of the app uses', 'Declared in the app by the template so it can be exported, unless <em>Only tables this application already uses</em> is ticked.'],
+        ['An unused table whose file name is a variable (<code>!FN_Invoice</code>)', 'Left out: that variable may not exist in this app (the compiler would stop at <code>Unknown identifier</code>). Make a procedure use the table, for example under Other Files, to offer it. The skipped tables are listed at the top of <code>&lt;app&gt;_MIE.clw</code>.'],
         ['The picture', 'The dictionary picture; when there is none, one by type (<code>@d10-</code>, <code>@t4</code>, <code>@s255</code>, <code>@n-21.2</code> ...).'],
         ['<code>pIsKey</code>', '1 for the components of the primary key.'],
     ]))

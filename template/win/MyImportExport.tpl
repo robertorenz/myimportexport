@@ -70,6 +70,12 @@
       #PROMPT('&Exclude tables:',FROM(%File)),%MIEExcludeTables,MULTI('Tables to exclude'),INLINE,UNIQUE,SELECTION('Tables to exclude')
       #DISPLAY('Also excluded: ALIAS tables, and any table or field whose dictionary')
       #DISPLAY('User Options contain MIEEXCLUDE. MEMO and BLOB fields are never offered.')
+      #PROMPT('Skip &in-memory tables (MEMORY driver, declared as QUEUE / GROUP)',CHECK),%MIESkipMemory,DEFAULT(1),AT(10)
+      #PROMPT('&Only tables this application already uses',CHECK),%MIEUsedOnly,DEFAULT(0),AT(10)
+      #DISPLAY('Unticked, tables no procedure uses are declared in the app so they')
+      #DISPLAY('can be exported too - except a table whose file name is a variable')
+      #DISPLAY('(!Name): that variable may not exist in this app, so such a table is')
+      #DISPLAY('offered only when a procedure of this app already uses it.')
     #ENDBOXED
     #BOXED('ABC: "Replace all" import mode deletes records through')
       #PROMPT('&Delete with:',DROP('FileManager (no cascade)|RelationManager (enforce RI)')),%MIEDeleteVia,DEFAULT('FileManager (no cascade)')
@@ -98,6 +104,8 @@
   #DECLARE(%MIEModuleBase)
   #DECLARE(%MIEModuleFile)
   #DECLARE(%MIETables),UNIQUE
+  #DECLARE(%MIEKeepTables),UNIQUE
+  #DECLARE(%MIESkippedTables),MULTI
   #DECLARE(%MIEKeyFields),UNIQUE
   #DECLARE(%MIEIncFile)
   #DECLARE(%MIEIncFound)
@@ -151,6 +159,14 @@
       #IF(INSTRING('MIEEXCLUDE',UPPER(%FileUserOptions),1,1))
         #CYCLE
       #ENDIF
+      #IF(%MIESkipMemory)
+        #! #CALL, not %MIEIsMemoryTable() in the #IF: a no-parameter group
+        #! called inside an expression here skips the rest of the loop body
+        #CALL(%MIEIsMemoryTable),%MIEFieldCount
+        #IF(%MIEFieldCount)
+          #CYCLE
+        #ENDIF
+      #ENDIF
       #SET(%MIEFieldCount,%MIEFieldLoop(0))
       #IF(%MIEFieldCount > 0)
         #ADD(%MIETables,%File)
@@ -183,7 +199,7 @@
 #! Project defines, used files, the generated module, the helper copy.
 #! %CustomGlobalDeclarations runs before the program module is generated and
 #! before ABC builds its file list from %UsedFile (ABCHAIN.TPL / CW.TPL).
-#AT(%CustomGlobalDeclarations),WHERE(%MIEDisable=0)
+#AT(%CustomGlobalDeclarations),WHERE(%MIEDisable=0),PRIORITY(9500)
   #! the family is only known for sure once the chain body has run (CW.TPL sets it late)
   #IF(UPPER(%AppTemplateFamily)='CLARION')
     #SET(%MIEIsABC,0)
@@ -210,8 +226,27 @@
   #PROJECT('None(' & %MIEHelper & '),CopyToOutputDirectory=Always')
   #ENDIF
   #IF(%MIEGenerate)
+    #! %UsedFile now holds every table the procedures use (they generate first).
+    #! A table nobody uses is declared because of us - unless that can't compile.
+    #FREE(%MIEKeepTables)
+    #FREE(%MIESkippedTables)
     #FOR(%MIETables)
-      #ADD(%UsedFile,%MIETables)
+      #FIX(%File,%MIETables)
+      #IF(INLIST(%MIETables,%UsedFile))
+        #ADD(%MIEKeepTables,%MIETables)
+      #ELSIF(%MIEUsedOnly)
+        #ADD(%MIESkippedTables,%MIETables & ' - not used by this application')
+      #ELSIF(%FileName<>'' AND SUB(%FileName,1,1)<>'''')
+        #! NAME(variable): the variable may not be declared in this app
+        #ADD(%MIESkippedTables,%MIETables & ' - not used by this application, file name is the variable ' & %FileName)
+      #ELSE
+        #ADD(%MIEKeepTables,%MIETables)
+      #ENDIF
+    #ENDFOR
+    #FREE(%MIETables)
+    #FOR(%MIEKeepTables)
+      #ADD(%MIETables,%MIEKeepTables)
+      #ADD(%UsedFile,%MIEKeepTables)
     #ENDFOR
     #MESSAGE('Generating Module:    ' & %MIEModuleFile,1)
     #CREATE('MIEMOD.$$$')

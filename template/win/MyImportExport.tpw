@@ -63,6 +63,32 @@
 #CLOSE(%MIEIncFile),READ
 #!
 #!----------------------------------------------------------------------------
+#! Is the current %File an in-memory table? MEMORY driver (IMDD), or declared
+#! as a QUEUE / GROUP instead of a FILE (ABC: dictionary option, or the
+#! DATA(QUEUE) / DATA(GROUP) user option).
+#!----------------------------------------------------------------------------
+#GROUP(%MIEIsMemoryTable),AUTO
+#DECLARE(%MIEMode)
+#IF(UPPER(%FileDriver)='MEMORY')
+  #RETURN(1)
+#ENDIF
+#SET(%MIEMode,'')
+#IF(VAREXISTS(%FileDeclarationMode))
+  #CASE(%FileDeclarationMode)
+  #OF('As QUEUE')
+    #SET(%MIEMode,'QUEUE')
+  #OF('As GROUP')
+    #SET(%MIEMode,'GROUP')
+  #OF('Use User Options')
+    #SET(%MIEMode,EXTRACT(UPPER(%FileUserOptions),'DATA',1))
+  #ENDCASE
+#ENDIF
+#IF(%MIEMode='QUEUE' OR %MIEMode='GROUP')
+  #RETURN(1)
+#ENDIF
+#RETURN(0)
+#!
+#!----------------------------------------------------------------------------
 #! Walk the fields of the current %File.
 #!   %pEmit = 0 : only count the usable fields (returned)
 #!   %pEmit = 1 : emit one SELF.AddField(...) per usable field / element
@@ -289,6 +315,13 @@ DO RefreshWindow
 #ENDIF
 ! Template family: %AppTemplateFamily (ABC hooks: %MIEIsABC)
 ! Class code   : _MIEDllMode_=%MIEDllMode (%(CHOOSE(%MIEDllMode=1,'imported from a DLL','compiled into this app')))
+! Tables       : %(ITEMS(%MIETables))
+#IF(ITEMS(%MIESkippedTables))
+! Not offered  : (make a procedure use the table, e.g. Other Files, to offer it)
+  #FOR(%MIESkippedTables)
+!   %MIESkippedTables
+  #ENDFOR
+#ENDIF
 !============================================================================
 
   INCLUDE('MyImportExport.inc'),ONCE

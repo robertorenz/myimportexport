@@ -95,6 +95,12 @@ Ship `MIEConvert.exe` next to your program's exe.
 - Every field of every table is offered except GROUP markers, MEMO, BLOB, fields declared `OVER()`,
   and fields or tables whose **dictionary User Options contain `MIEEXCLUDE`**.
   ALIAS tables are skipped (the real table is offered instead).
+- In-memory tables (MEMORY driver, or declared as QUEUE / GROUP) are skipped. Untick
+  *Skip in-memory tables* on the Tables tab to offer them.
+- A table no procedure of the app uses is still declared so it can be exported, unless its file
+  name is a variable (`!FN_Invoice`). That variable may not exist in the app, so such a table is
+  offered only when a procedure already uses it. *Only tables this application already uses*
+  limits the list to used tables. The skipped tables are listed at the top of `<app>_MIE.clw`.
 - `DIM()` arrays become one column per element (`Phones_1`, `Phones_2`, ...).
 - Column names come from the external `NAME()` when set, otherwise the label without its prefix.
 - Dates are written as `yyyy-mm-dd`, times as `hh:mm:ss`, numbers with a `.` decimal point. In Excel
