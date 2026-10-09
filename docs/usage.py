@@ -74,7 +74,7 @@ PROPS = {
  'ReplaceSheet': ("XLSX export: 1 keeps the other sheets of an existing workbook and only adds or replaces SheetName.",
                   "MIE.SheetName    = 'Customers'\n"
                   "MIE.ReplaceSheet = 1"),
- 'UsePictures': ("Export: 1 formats dates, times and numbers with each field's dictionary picture instead of yyyy-mm-dd, hh:mm:ss and plain numbers. Those columns are then written as text.",
+ 'UsePictures': ("CSV, TSV and XML export: 1 formats dates, times and numbers with each field's dictionary picture instead of yyyy-mm-dd, hh:mm:ss and plain numbers. JSON, XLSX and XLS ignore it and always write typed numbers, dates and times.",
                  "MIE.UsePictures = 1                        ! 15/03/1970 instead of 1970-03-15"),
  'HelperPath': ("The full path of MIEConvert.exe. The constructor sets it to the program's own folder.",
                 "MIE.HelperPath = ExeDir & '\\tools\\MIEConvert.exe'"),
@@ -288,6 +288,8 @@ METHODS = {
                "SELF.SplitLine(SELF.LineBuf[1 : SELF.LineLen + 1])"),
  'FreeValues': ("PROTECTED. Disposes the strings in Values and empties it.",
                 "SELF.FreeValues()"),
+ 'PicturesApply': ("1 when the export uses dictionary pictures: UsePictures is on and Format is CSV, TSV or XML.",
+                   "IF SELF.PicturesApply() THEN Txt = FORMAT(SELF.Fields.Ref, SELF.Fields.Picture)."),
  'FieldToText': ("PROTECTED. The current field's value as export text (ISO dates, hh:mm:ss times, plain numbers, or the picture).",
                  "GET(SELF.Fields, I) ; Txt = SELF.FieldToText()"),
  'TypeCode': ("PROTECTED. The column type sent to the helper: S, N, D or T.",

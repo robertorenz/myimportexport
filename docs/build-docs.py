@@ -757,7 +757,9 @@ next auto-increment number. When the key <i>is</i> mapped, the imported key valu
     ]))
     add('<p>Zero dates and times export as empty cells and import back as zero. With <b>Format with dictionary '
         'pictures</b> (<code>UsePictures</code>) dates, times and numbers are written exactly as your program '
-        'shows them, as text.</p>')
+        'shows them, as text &mdash; in CSV, TSV and XML only. JSON, XLSX and XLS have real number and date '
+        'types and always get them: a picture such as <code>@n-14.2</code> adds a thousands separator '
+        '(<code>1,234.56</code>), which would turn every amount into a string.</p>')
     add('<h2 id="formats"><span class="k">Formats</span>What each format does</h2>')
     add(table(['Format', 'Import', 'Export'], [
         ['CSV', 'Quoted fields, doubled quotes, line breaks inside quotes. Delimiter of your choice. Encoding detected (BOM, UTF-8, else ANSI).', 'Quotes only where needed. UTF-8 with BOM, so Excel shows accents correctly.'],

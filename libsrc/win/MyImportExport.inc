@@ -88,7 +88,7 @@ XmlRow                 CSTRING(65)
 JsonRoot               CSTRING(65)
 ImportMode             BYTE
 ReplaceSheet           BYTE          ! xlsx export: keep other sheets
-UsePictures            BYTE          ! export dates/times/numbers with dictionary pictures
+UsePictures            BYTE          ! CSV/TSV/XML export: dates/times/numbers with dictionary pictures
 HelperPath             CSTRING(261)  ! full path of MIEConvert.exe
 IniFile                CSTRING(261)  ! where mappings are saved
 Silent                 BYTE          ! no messages
@@ -177,6 +177,7 @@ SplitLine              PROCEDURE(STRING pLine),PROTECTED
 FreeValues             PROCEDURE,PROTECTED
 FieldToText            PROCEDURE,STRING,PROTECTED
 TypeCode               PROCEDURE,STRING,PROTECTED
+PicturesApply          PROCEDURE,BYTE                     ! 1 = UsePictures and a text format (CSV, TSV, XML)
 TextToField            PROCEDURE(STRING pText),PROTECTED
 ApplyRow               PROCEDURE,PROTECTED
 NormalName             PROCEDURE(STRING pText),STRING,PROTECTED

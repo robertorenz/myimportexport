@@ -85,7 +85,7 @@ Ship `MIEConvert.exe` next to your program's exe.
 | Delimiter | csv: comma, semicolon, tab, pipe |
 | Root / Row / Array | xml element names, json array property (blank = auto-detect on import) |
 | Import mode | Add new · Add or update (by primary key) · Update existing only · Replace all |
-| Format with dictionary pictures | export dates / numbers as they are shown in the app |
+| Format with dictionary pictures | CSV / TSV / XML: export dates, times and numbers as they are shown in the app (JSON and Excel always keep real numbers and dates) |
 | Keep other sheets | xlsx export: add or replace only this sheet in an existing workbook |
 | Field list | tick fields (double-click / Space), set the source column or column header, reorder with Move Up / Down, **Auto Map** matches by name |
 | Save Mapping | remembers everything for this table (INI) |

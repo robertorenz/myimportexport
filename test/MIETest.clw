@@ -15,6 +15,7 @@
     CompareTables(STRING pWhat),LONG
     UpsertTest()
     MultiTest()
+    PicturesTest()
     MultiOne(STRING pFormat,STRING pExt)
   END
 
@@ -76,6 +77,7 @@ SetupTable             PROCEDURE(STRING pName),BYTE,DERIVED
   RoundTrip('XLS','xls','Customers')
   UpsertTest()
   MultiTest()
+  PicturesTest()
   WriteLog('FAILURES: ' & Failures)
   HALT(Failures)
 
@@ -339,3 +341,23 @@ I                    LONG
     END
   END
   TestMie.Kill()
+
+PicturesTest         PROCEDURE
+Exp                  MyImportExportClass
+  CODE
+  ! numbers must stay numbers in JSON even with "Format with dictionary pictures"
+  Exp.Init()
+  Exp.Silent      = 1
+  Exp.IniFile     = ''
+  CurMie &= Exp
+  SetupFields(0)
+  Exp.Format      = 'JSON'
+  Exp.UsePictures = 1
+  Exp.FileName    = LONGPATH() & '<92>out_pics.json'
+  IF Exp.Export()
+    Failures += 1
+    WriteLog('PICTURES export failed: ' & Exp.ErrorText)
+  ELSE
+    WriteLog('PICTURES export: ' & Exp.Processed & ' records')
+  END
+  Exp.Kill()

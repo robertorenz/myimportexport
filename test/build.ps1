@@ -46,4 +46,10 @@ $p = Start-Process -FilePath (Join-Path $build 'MIETest.exe') -Wait -PassThru
 Pop-Location
 Get-Content (Join-Path $build 'mietest.log')
 Write-Host "Exit code: $($p.ExitCode)"
+# JSON keeps numbers typed even with "Format with dictionary pictures" on
+$pics = Get-Content (Join-Path $build 'out_pics.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($pics[0].Balance -isnot [double] -and $pics[0].Balance -isnot [decimal]) {
+    Write-Host "PICTURES: Balance is not a JSON number: $($pics[0].Balance)"; exit 1
+}
+Write-Host "PICTURES: numbers stay numbers in JSON"
 exit $p.ExitCode

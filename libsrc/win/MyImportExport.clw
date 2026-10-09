@@ -588,7 +588,9 @@ MyImportExportClass.IsTime PROCEDURE
 
 MyImportExportClass.TypeCode PROCEDURE
   CODE
-  IF SELF.UsePictures AND SELF.Fields.Picture <> '' AND (SELF.IsDate() OR SELF.IsTime() OR SELF.IsNumber())
+  ! Pictures only apply to the text formats (see PicturesApply); JSON, XLSX
+  ! and XLS always get typed numbers, dates and times.
+  IF SELF.PicturesApply() AND SELF.Fields.Picture <> '' AND (SELF.IsDate() OR SELF.IsTime() OR SELF.IsNumber())
     RETURN 'S'
   END
   IF SELF.IsDate() THEN RETURN 'D'.
@@ -596,20 +598,27 @@ MyImportExportClass.TypeCode PROCEDURE
   IF SELF.IsNumber() THEN RETURN 'N'.
   RETURN 'S'
 
+MyImportExportClass.PicturesApply PROCEDURE
+  CODE
+  ! Display pictures make sense where everything is text anyway. JSON, XLSX and
+  ! XLS have real number and date types: a picture such as @n-14.2 (1,234.56)
+  ! would turn numbers into strings there, so they always get typed values.
+  RETURN CHOOSE(SELF.UsePictures AND INLIST(UPPER(CLIP(SELF.Format)),'CSV','TSV','XML') > 0,1,0)
+
 MyImportExportClass.FieldToText PROCEDURE
 Pic                    CSTRING(41)
   CODE
   Pic = CLIP(LEFT(SELF.Fields.Picture))
   IF SELF.IsDate()
     IF SELF.Fields.Ref = 0 THEN RETURN ''.
-    IF SELF.UsePictures AND Pic <> '' THEN RETURN CLIP(LEFT(FORMAT(SELF.Fields.Ref,Pic))).
+    IF SELF.PicturesApply() AND Pic <> '' THEN RETURN CLIP(LEFT(FORMAT(SELF.Fields.Ref,Pic))).
     RETURN FORMAT(SELF.Fields.Ref,@D10-)
   ELSIF SELF.IsTime()
     IF SELF.Fields.Ref = 0 THEN RETURN ''.
-    IF SELF.UsePictures AND Pic <> '' THEN RETURN CLIP(LEFT(FORMAT(SELF.Fields.Ref,Pic))).
+    IF SELF.PicturesApply() AND Pic <> '' THEN RETURN CLIP(LEFT(FORMAT(SELF.Fields.Ref,Pic))).
     RETURN FORMAT(SELF.Fields.Ref,@T04)
   ELSIF SELF.IsNumber()
-    IF SELF.UsePictures AND Pic <> '' THEN RETURN CLIP(LEFT(FORMAT(SELF.Fields.Ref,Pic))).
+    IF SELF.PicturesApply() AND Pic <> '' THEN RETURN CLIP(LEFT(FORMAT(SELF.Fields.Ref,Pic))).
     RETURN CLIP(LEFT(SELF.Fields.Ref))
   END
   RETURN CLIP(SELF.Fields.Ref)
@@ -1388,7 +1397,7 @@ Window WINDOW('Export tables'),AT(,,424,300),FONT('Segoe UI',9,,FONT:regular),CE
        PROMPT('File:'),AT(8,230),USE(?FilePrompt)
        ENTRY(@s255),AT(52,228,342,12),USE(LocFile)
        BUTTON('...'),AT(398,227,18,14),USE(?BrowseFile),TIP('Choose the file')
-       CHECK('Format with dictionary pictures'),AT(52,246),USE(LocPictures)
+       CHECK('Format with dictionary pictures'),AT(52,246),USE(LocPictures),TIP('CSV, TSV and XML: write dates, times and numbers as the program shows them')
        STRING('Each table uses the columns saved for it in Import / Export.'),AT(8,262,408,10),USE(?Hint),FONT(,8,COLOR:Gray)
        PROGRESS,AT(8,280,200,8),USE(?Progress),RANGE(0,100)
        STRING(''),AT(8,290,290,10),USE(?Status)
@@ -1484,6 +1493,7 @@ ToggleCurrent ROUTINE
   DO RefreshList
 
 ShowNote ROUTINE
+  IF INLIST(LocFormat,'CSV','TSV','XML') THEN UNHIDE(?LocPictures) ELSE HIDE(?LocPictures).
   CASE LocFormat
   OF 'XLSX'
   OROF 'XLS'
@@ -1712,7 +1722,7 @@ Window WINDOW('Import / Export'),AT(,,480,344),FONT('Segoe UI',9,,FONT:regular),
        ENTRY(@s64),AT(162,102,80,12),USE(LocRow)
        PROMPT('Import mode:'),AT(252,104),USE(?ImportModePrompt)
        LIST,AT(300,102,172,12),USE(LocImportMode),DROP(4),FROM('Add new records|Add or update (match primary key)|Update existing records only|Replace all records')
-       CHECK('Format with dictionary pictures'),AT(252,103),USE(LocPictures)
+       CHECK('Format with dictionary pictures'),AT(252,103),USE(LocPictures),TIP('CSV, TSV and XML: write dates, times and numbers as the program shows them')
        CHECK('Keep other sheets'),AT(390,103),USE(LocReplace),TIP('Add or replace only this sheet in an existing workbook')
        LIST,AT(8,122,394,168),USE(?MapList),VSCROLL,FROM(DispQ),ALRT(MouseLeft2),ALRT(SpaceKey), |
            FORMAT('20C|I~Use~@s1@110L(2)|~Field~@s100@64L(2)|~Type~@s40@120L(2)|~Column~@s128@80L(2)~Sample~@s128@')
@@ -2028,7 +2038,7 @@ SyncControls ROUTINE
     ?LocRow{PROP:Tip}  = 'Element name of one row (blank = auto)'
   ELSE
     HIDE(?ImportModePrompt,?LocImportMode)
-    UNHIDE(?LocPictures)
+    IF INLIST(LocFormat,'CSV','TSV','XML') THEN UNHIDE(?LocPictures) ELSE HIDE(?LocPictures).
     IF LocFormat = 'XLSX' THEN UNHIDE(?LocReplace) ELSE HIDE(?LocReplace).
     HIDE(?SourcePrompt,?LocSource)
     UNHIDE(?HeaderPrompt,?LocHeaderName)
