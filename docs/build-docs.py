@@ -589,6 +589,11 @@ shows a value from the first row so you can see what you are mapping.</li>
 all records.</li>
 <li>Click <b>Import</b>. The result shows rows read, added, updated, skipped and failed.</li>
 </ol>''')
+    add('<h3 id="first-multi">Several tables at once</h3>')
+    add('''<p>Tick <b>Show the "Export tables..." button</b> on the buttons control template, or call
+<code>MIE_ExportTables()</code>. Tick the tables, choose XLSX and a file, and click <b>Export</b>: each table
+becomes a sheet named after it. JSON gives one collection per table and XML one element per table; CSV and
+TSV write one file per table.</p>''')
     add(note('warn', 'Replace all deletes first', '<p><i>Replace all records</i> empties the table before it '
         'adds the rows, and asks first. Use it for lookup tables you reload from a master file.</p>'))
     add('<h2 id="hand"><span class="k">Without the template</span>The smallest program by hand</h2>')
@@ -614,7 +619,7 @@ output folder on every build (<b>Helper &amp; INI</b> tab).</li>
     add('<h2 id="next1"><span class="k">Getting Started</span>Where to go next</h2>')
     add(nextcards(['programmers-guide.html', 'template-guide.html', 'reference.html']))
     nav = [('Start here', [('what', ''), ('needs', ''), ('install', ''), ('app', ''),
-                           ('first-export', ''), ('first-import', '')]),
+                           ('first-export', ''), ('first-import', ''), ('first-multi', '')]),
            ('More', [('hand', ''), ('ship', ''), ('demos', ''), ('next1', '')])]
     return page('getting-started.html', 'MyImportExport Getting Started', 'Volume 1', 'Getting Started',
                 'Install the template, put Import and Export buttons on a browse, and move your first table '
@@ -768,6 +773,23 @@ the first). Excel's first non-empty row is the header and completely empty rows 
 <code>SheetName</code> names the new sheet. With <code>ReplaceSheet</code> on an existing .xlsx, only that
 sheet is added or replaced and every other sheet keeps its content and formatting &mdash; so one workbook can
 collect several tables, one per sheet.</p>''')
+    add('<h3 id="multi">Several tables in one file</h3>')
+    add('''<p>Several tables can go into one file, each kept apart under its own name. Each table is written
+with the columns, order and headers saved for it in the single-table window, so set those up once per
+table and the multi-table export reuses them.</p>''')
+    add(table(['Format', 'How the tables are kept apart'], [
+        ['JSON', 'One collection per table: <code>{"Customer":[...], "Product":[...]}</code>. An empty table is <code>[]</code>.'],
+        ['XML', 'One element per table inside the root: <code>&lt;Data&gt;&lt;Customer&gt;&lt;Row&gt;...&lt;/Row&gt;&lt;/Customer&gt;&lt;Product&gt;...&lt;/Data&gt;</code>.'],
+        ['XLSX, XLS', 'One sheet per table, named after the table. Names are cleaned to Excel\'s rules (31 characters, no <code>: \\ / ? * [ ]</code>, unique), and an empty table gets a header-only sheet.'],
+        ['CSV, TSV', 'These hold one table per file, so each table goes to its own file: <code>backup.csv</code> becomes <code>backup_Customer.csv</code>, <code>backup_Product.csv</code>.'],
+    ]))
+    add(code("MIE.AddTable('Customer') ; MIE.AddTable('Product')   ! the template does this for every table\n"
+             "MIE.LoadTablesMap()                                ! last ticked tables, format and file\n"
+             "MIE.AskTables()                                    ! or set Tables.Selected and call ExportTables()"))
+    add('<p>Under the window, <code>ExportTables</code> calls <code>SetupTable</code>, <code>LoadMap</code> and '
+        '<code>BatchAdd</code> for each ticked table, then <code>BatchFinish</code> runs the helper\'s '
+        '<code>exportmulti</code> command once. You can drive the batch methods yourself to combine tables '
+        'from different places.</p>')
     add('<h2 id="saved"><span class="k">How-to</span>Saved mappings</h2>')
     add('<p>After every successful run the window calls <code>SaveMap</code>, and the generated procedure calls '
         '<code>LoadMap</code> before it opens the window. Each field line holds '
@@ -847,7 +869,7 @@ dictionary's relations; <i>Replace all</i> deletes through <code>Access:</code> 
     add(nextcards(['template-guide.html', 'reference.html', 'getting-started.html']))
     nav = [('Concepts', [('parts', ''), ('tsv', ''), ('fields', ''), ('automap', ''), ('modes', ''),
                          ('values', '')]),
-           ('Formats', [('formats', ''), ('excel', '')]),
+           ('Formats', [('formats', ''), ('excel', ''), ('multi', '')]),
            ('How-to', [('saved', ''), ('headless', ''), ('derive', ''), ('results', '')]),
            ('Clarion notes', [('notes', ''), ('n-any', ''), ('n-slice', ''), ('n-time', ''), ('n-run', ''),
                               ('n-dos', ''), ('n-ansi', ''), ('n-abc', ''), ('n-tpl', '')]),
@@ -871,35 +893,54 @@ TAB_NOTES = {
 }
 
 S_GENPROC = """
-MIE_ImportExport     PROCEDURE(STRING pTable,BYTE pMode)
-ThisMIE              CLASS(MyImportExportClass)
+MIE_DictClass        CLASS(MyImportExportClass),TYPE   ! one class, shared by both procedures
 FM                     &FileManager
 RM                     &RelationManager
-  ...                                              ! the hooks, see below
+Prepare                PROCEDURE                       ! helper path, INI, default format
+SetupTable             PROCEDURE(STRING pName),BYTE,DERIVED
+  ...                                                  ! the ABC hooks, see below
                      END
+
+MIE_ImportExport     PROCEDURE(STRING pTable,BYTE pMode)
+ThisMIE              MIE_DictClass
   CODE
   TableName = pTable
-  IF TableName = '' THEN DO PickTable.             ! small list of every offered table
-  ThisMIE.Init()
-  ThisMIE.HelperPath = 'MIEConvert.exe'            ! made absolute: beside the program
-  ThisMIE.IniFile    = INIMgr.FileName
-  ThisMIE.Format     = 'XLSX'
-  CASE UPPER(TableName)
-  OF 'CUSTOMER'                                    ! Customers
-    ThisMIE.FM &= Access:Customer
-    ThisMIE.RM &= Relate:Customer
-    ThisMIE.SetTable(Customer,'Customer',CUS:KeyCustNumber)
-    ThisMIE.AddField('CUS:CustNumber','CustNumber','LONG','@n_10',CUS:CustNumber,1)
-    ThisMIE.AddField('CUS:Name','Name','STRING','@s40',CUS:Name,0)
-    ThisMIE.AddField('CUS:Phones[1]','Phones_1','STRING','@s20',CUS:Phones[1],0)
-    ...
-  OF 'PRODUCT'
-    ...
-  END
+  IF TableName = '' THEN DO PickTable.                 ! small list of every offered table
+  ThisMIE.Prepare()
+  IF ThisMIE.SetupTable(TableName) <> 0 THEN ... RETURN 0.
   ThisMIE.LoadMap()
   Result = ThisMIE.Ask(pMode)
   ThisMIE.Kill()
   RETURN Result
+
+MIE_ExportTables     PROCEDURE(<STRING pTables>)
+ThisMIE              MIE_DictClass
+  CODE
+  ThisMIE.Prepare()
+  ThisMIE.AddTable('Customer','Customers')             ! one per offered table
+  ThisMIE.AddTable('Product','Products')
+  ThisMIE.LoadTablesMap()                              ! then pTables, if given, sets the ticks
+  Result = ThisMIE.AskTables()
+  ThisMIE.Kill()
+  RETURN Result
+
+MIE_DictClass.SetupTable PROCEDURE(STRING pName)
+  CODE
+  CASE UPPER(pName)
+  OF 'CUSTOMER'                                        ! Customers
+    SELF.FM &= Access:Customer
+    SELF.RM &= Relate:Customer
+    SELF.SetTable(Customer,'Customer',CUS:KeyCustNumber)
+    SELF.AddField('CUS:CustNumber','CustNumber','LONG','@n_10',CUS:CustNumber,1)
+    SELF.AddField('CUS:Name','Name','STRING','@s40',CUS:Name,0)
+    SELF.AddField('CUS:Phones[1]','Phones_1','STRING','@s20',CUS:Phones[1],0)
+    ...
+  OF 'PRODUCT'
+    ...
+  ELSE
+    RETURN PARENT.SetupTable(pName)                    ! 1 = unknown table
+  END
+  RETURN 0
 """
 
 def prompt_table(t, tab):
@@ -941,16 +982,17 @@ the next generate, with no other change.</p>''')
     add(table(['Where', 'What'], [
         ['Global includes', "<code>INCLUDE('MyImportExport.inc'),ONCE</code>"],
         ['Project', 'The defines <code>_MIEDllMode_</code> / <code>_MIELinkMode_</code>, the DOS driver, the module <code>&lt;program&gt;_MIE.clw</code>, and, if ticked, the helper with <i>copy to output</i>.'],
-        ['Global MAP', '<code>MIE_ImportExport(STRING,BYTE=0),BYTE,PROC</code> &mdash; with <code>,DLL</code> in apps that do not generate it.'],
+        ['Global MAP', '<code>MIE_ImportExport(STRING,BYTE=0),BYTE,PROC</code> and <code>MIE_ExportTables(&lt;STRING&gt;),BYTE,PROC</code> &mdash; with <code>,DLL</code> in apps that do not generate them.'],
         ['Used files', 'Every offered table, so ABC declares its <code>Access:</code> and <code>Relate:</code> objects.'],
-        ['DLL export list', '<code>MIE_ImportExport</code>, and in the DLL that holds the class, its VMT, type descriptor and every non-private method &mdash; computed from the .inc at generate time.'],
+        ['DLL export list', '<code>MIE_ImportExport</code>, <code>MIE_ExportTables</code>, and in the DLL that holds the class, its VMT, type descriptor and every non-private method &mdash; computed from the .inc at generate time.'],
     ]))
-    add('<h3 id="g-module">The generated procedure</h3>')
-    add('<p>Abridged from a real generated <code>_MIE.clw</code>:</p>')
+    add('<h3 id="g-module">The generated module</h3>')
+    add('<p>The module <code>&lt;program&gt;_MIE.clw</code> holds one class bound to your dictionary, '
+        '<code>MIE_DictClass</code>, and the two procedures that use it. Abridged from a real one:</p>')
     add(code(S_GENPROC))
     add('<h3 id="g-hooks">The ABC hooks</h3>')
-    add('<p>In an ABC app <code>ThisMIE</code> routes the table I/O through the table\'s FileManager and '
-        'RelationManager. <code>FM</code> and <code>RM</code> are set per table, so the hooks need no '
+    add('<p>In an ABC app <code>MIE_DictClass</code> routes the table I/O through the table\'s FileManager and '
+        'RelationManager. <code>FM</code> and <code>RM</code> are set per table in <code>SetupTable</code>, so the hooks need no '
         '<code>CASE</code>:</p>')
     add(table(['Hook', 'Generated as'], [
         ['<code>OpenTable</code>', '<code>FM.Open()</code> (or <code>RM.Open()</code> with RelationManager deletes) + <code>FM.UseFile()</code>; opens and closes are counted.'],
@@ -979,10 +1021,21 @@ the next generate, with no other change.</p>''')
         ['<code>pIsKey</code>', '1 for the components of the primary key.'],
     ]))
 
+    add('<h3 id="g-multi">MIE_ExportTables</h3>')
+    add('''<p>The second generated procedure exports several tables into one file: a sheet per table in XLSX
+and XLS, a collection per table in JSON, an element per table in XML, and a file per table for CSV and TSV.
+It offers every table <code>MIE_ImportExport</code> offers and remembers the ticked tables, the format and
+the file in the <code>[MIE__Tables]</code> INI section. Pass table labels to pre-tick them:</p>''')
+    add(code("MIE_ExportTables()                                ! last selection\n"
+             "MIE_ExportTables('Customer, Product, Invoice')    ! exactly these, any case"))
+    add('<p>Each table is exported with the columns, order and headers saved for it in '
+        '<code>MIE_ImportExport</code>, and the rule embeds (<code>ExportFilter</code>) apply per table as '
+        'usual.</p>')
     c = byname['MyImportExportButtons']
     add('<h2 id="buttons"><span class="k">Control</span>MyImportExportButtons</h2>')
-    add('<p>A window control template: an <b>Import...</b> and an <b>Export...</b> button, or one button that '
-        'pops a small Import / Export menu. You can put several on one window, each for a different table.</p>')
+    add('<p>A window control template: an <b>Import...</b> and an <b>Export...</b> button, and optionally an '
+        '<b>Export tables...</b> button for several tables at once. The one-button style pops a menu with all '
+        'three. You can put several on one window, each for a different table.</p>')
     add(prompt_table(c, 'General'))
     add('''<p><b>Procedure's primary table</b> is the table of the first browse on the window, else the form's
 table. When neither exists the user picks a table at run time. After a successful import the window is
@@ -994,12 +1047,15 @@ refreshed: <code>ThisWindow.Reset(1)</code> in ABC, which re-reads every browse.
              "  END\n"
              "OF 2\n"
              "  MIE_ImportExport('Customer',MIE:Mode:Export)\n"
+             "OF 3\n"
+             "  MIE_ExportTables()\n"
              "END"))
 
     k = byname['MyImportExportCall']
     add('<h2 id="call"><span class="k">Code</span>MyImportExportCall</h2>')
     add('<p>A code template for any embed: a menu item, a button of your own, a process. It writes one call to '
-        '<code>MIE_ImportExport</code>.</p>')
+        '<code>MIE_ImportExport</code>, or to <code>MIE_ExportTables</code> in the <i>Export several tables</i> '
+        'mode (the table prompt is then ignored).</p>')
     add(prompt_table(k, ''))
     add(code("LOC:Done = MIE_ImportExport('',0)             ! picker, user chooses the mode\n"
              "IF LOC:Done\n"
@@ -1038,7 +1094,7 @@ refreshed: <code>ThisWindow.Reset(1)</code> in ABC, which re-reads every browse.
         if p['tab'] not in gtabs: gtabs.append(p['tab'])
     nav = [('Overview', [('set', '')]),
            ('Global extension', [('global', '')] + [('g-' + slug(t), '') for t in gtabs] +
-                                [('g-writes', ''), ('g-module', ''), ('g-hooks', ''), ('g-fields', '')]),
+                                [('g-writes', ''), ('g-module', ''), ('g-hooks', ''), ('g-fields', ''), ('g-multi', '')]),
            ('Window and code', [('buttons', ''), ('call', ''), ('embeds', '')]),
            ('Recipes', [('multidll', ''), ('regen', ''), ('next3', '')])]
     return page('template-guide.html', 'MyImportExport Template Guide', 'Volume 3', 'Template Guide',
@@ -1134,6 +1190,14 @@ derived class only.</p>''')
         ['returns', '1 when something was imported or exported, 0 when the user cancelled or it failed.'],
     ]))
     add(usecode("IF MIE_ImportExport('Customer', MIE:Mode:Import) THEN BRW1.ResetSort(1)."))
+    add('<h3 id="proc-multi">MIE_ExportTables</h3>')
+    add('<p>Generated beside it: the multi-table export window over every offered table.</p>')
+    add(code("MIE_ExportTables(<STRING pTables>),BYTE,PROC"))
+    add(table(['Parameter', 'Meaning'], [
+        ['<code>pTables</code>', 'Optional comma-separated table labels to tick; omitted, the tables ticked last time are ticked.'],
+        ['returns', '1 when something was exported, 0 when the user cancelled or it failed.'],
+    ]))
+    add(usecode("MIE_ExportTables('Customer,Product,Invoice')     ! pre-ticked, user picks format and file"))
 
     add('<h2 id="helper"><span class="k">Helper</span>MIEConvert.exe</h2>')
     add('<p>The class runs it for you, but it is an ordinary command-line program and can be used from scripts. '
@@ -1145,6 +1209,8 @@ derived class only.</p>''')
         ['<code>sheets</code>', 'an .xls or .xlsx file', 'a text file, one sheet name per line'],
         ['<code>import</code>', 'a file in any of the six formats', 'the intermediate tab file (header row, then data)'],
         ['<code>export</code>', 'the intermediate tab file (header row, type row, data)', 'a file in any of the six formats'],
+        ['<code>exportmulti</code>', 'a list file: one <code>name&lt;TAB&gt;intermediate file</code> line per table',
+         'one json (a collection per table), xml (an element per table), xlsx or xls (a sheet per table) file'],
     ]))
     add('<h3 id="h-opts">Options</h3>')
     rows = []
@@ -1162,7 +1228,7 @@ derived class only.</p>''')
            ('Properties', [('props', '')] + [('p-' + slug(g), '') for g in pgroups]),
            ('Methods', [('meths', '')] + [('m-' + slug(g), '') for g in mgroups]),
            ('Types', [('queues', '')] + [('q-' + slug(q['name']), '') for q in QUEUES] + [('eq', '')]),
-           ('Procedure and helper', [('proc', ''), ('helper', ''), ('h-cmds', ''), ('h-opts', ''), ('next4', '')])]
+           ('Procedure and helper', [('proc', ''), ('proc-multi', ''), ('helper', ''), ('h-cmds', ''), ('h-opts', ''), ('next4', '')])]
     return page('reference.html', 'MyImportExport Reference', 'Volume 4', 'Reference',
                 'Every property, method, equate and helper option &mdash; generated from the sources, with a '
                 'worked piece of Clarion against each member.',

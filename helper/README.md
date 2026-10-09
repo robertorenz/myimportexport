@@ -31,6 +31,8 @@ MIEConvert import <inputFile> <outTsv> [--format f] [--sheet s] [--noheader] [--
 MIEConvert export <inTsv> <outputFile> [--format f] [--sheet s] [--replacesheet] [--noheader]
                   [--delimiter c] [--encoding utf8|utf8bom|ansi|<codepage>] [--root name] [--row name]
                   [--errfile f]
+MIEConvert exportmulti <listFile> <outputFile> [--format json|xml|xlsx|xls] [--root name] [--row name]
+                  [--encoding e] [--noheader] [--codepage n] [--errfile f]
 ```
 
 Exit code 0 = success, 1 = error (message in `--errfile` and on stderr). The MIE-TSV file is ANSI
@@ -45,7 +47,29 @@ MIEConvert import  C:\in\data.csv   C:\tmp\data.tsv --delimiter ; --encoding aut
 MIEConvert import  C:\in\feed.json  C:\tmp\data.tsv --rowpath items
 MIEConvert export  C:\tmp\data.tsv  C:\out\cust.xlsx --sheet Customers --replacesheet
 MIEConvert export  C:\tmp\data.tsv  C:\out\cust.xml  --root Customers --row Customer
+MIEConvert exportmulti C:\tmp\tables.txt C:\out\all.xlsx
 ```
+
+### exportmulti (several tables in one file)
+
+`listFile` is a text file in the MIE-TSV code page (ANSI, or `--codepage n`) with one line per
+table: `<name><TAB><path of a MIE-TSV export file>` (the same export file as `export` reads:
+header line, type line, data). Blank lines are ignored; relative paths are resolved against the
+list file's folder. The line order is the order in the output.
+
+| Format | Output |
+|---|---|
+| json | `{"Customer":[{...},...],"Product":[...]}`: one array per table, same value typing as `export` (`N` unquoted, empty `N` = `null`). An empty table gives `[]`. `--root` is ignored. |
+| xml | `<Data><Customer><Row>...</Row></Customer><Product>...</Product></Data>`; `--root` / `--row` rename `Data` / `Row`; table names are sanitised like column names. |
+| xlsx | A new workbook (always overwritten) with one worksheet per table, same typed cells, styles and bold header as `export`. |
+| xls | The same as BIFF8 (one BOUNDSHEET per sheet, shared string table). The 65536-row / 256-column limits apply per sheet, and the error names the table. |
+| csv / tsv | Refused (exit 1): "csv/tsv hold one table per file; export each table separately." |
+
+Sheet names (xlsx/xls) are the table names made valid for Excel: `: \ / ? * [ ]` become `_`,
+leading/trailing spaces and apostrophes are removed, a blank name becomes `SheetN` (N = position),
+names are cut to 31 characters, the reserved name `History` becomes `History_`, and duplicates
+(compared case-insensitively) get ` (2)`, ` (3)`... with the stem shortened so the result stays
+within 31 characters.
 
 ### Behaviour notes
 
@@ -68,7 +92,9 @@ MIEConvert export  C:\tmp\data.tsv  C:\out\cust.xml  --root Customers --row Cust
 accented characters, empty values, numbers, dates and times through every format, checks the
 xlsx/xls output with openpyxl and xlrd, reads files written by openpyxl, xlwt and a hand-built
 OpenXML package, and tests `--replacesheet`, `sheets`, `--noheader`, `--maxrows`, `--rowpath`,
-XML auto-detection, encodings and error reporting.
+XML auto-detection, encodings and error reporting. The `exportmulti` tests push three tables (one
+empty) through json, xml, xlsx and xls and check them with the json/ElementTree/openpyxl/xlrd
+parsers, plus sheet-name sanitising/dedupe, the 256-column error and the csv/tsv refusal.
 
 ```bat
 python -m venv %TEMP%\mievenv

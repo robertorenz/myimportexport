@@ -77,6 +77,7 @@ INSTANCE 2
 %MIEBtnTableSource DEFAULT  ('Procedure''s primary table')
 %MIEBtnStyle DEFAULT  ('Two buttons (Import, Export)')
 %MIEBtnRefresh LONG  (1)
+%MIEBtnTables LONG  (1)
 [ADDITION]
 NAME ABC CloseButton
 [INSTANCE]
@@ -86,6 +87,7 @@ Window WINDOW('Customers'),AT(,,360,220),FONT('Segoe UI',9,,FONT:regular),CENTER
        LIST,AT(6,6,348,180),USE(?Browse:1),HVSCROLL,FORMAT('40R(2)|M~ID~C(0)@n-14@160L(2)|M~Name~@s40@80L(2)|M~Birth Date~@d17@'),FROM(Queue:Browse:1),IMM,#FIELDS(CUS:ID,CUS:Name,CUS:BirthDate),#ORIG(?List),#SEQ(1)
        BUTTON('&Import...'),AT(6,194,50,14),USE(?MIEImport),#ORIG(?MIEImport),#SEQ(2)
        BUTTON('E&xport...'),AT(60,194,50,14),USE(?MIEExport),#ORIG(?MIEExport),#SEQ(2)
+       BUTTON('Export &tables...'),AT(114,194,64,14),USE(?MIEExportTables),#ORIG(?MIEExportTables),#SEQ(2)
        BUTTON('Close'),AT(304,194,50,14),USE(?Close),#ORIG(?Close),#SEQ(3)
      END
 [END]

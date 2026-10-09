@@ -162,42 +162,71 @@ namespace MIEConvert
             return sb.ToString();
         }
 
-        public static void Write(string path, Table t, Options o)
+        static XmlWriterSettings WriterSettings(Options o)
         {
-            Encoding enc = TextEnc.ForOutput(o.Encoding);
-            var settings = new XmlWriterSettings
+            return new XmlWriterSettings
             {
-                Encoding = enc,
+                Encoding = TextEnc.ForOutput(o.Encoding),
                 Indent = true,
                 IndentChars = "  ",
                 NewLineChars = "\r\n",
                 NewLineHandling = NewLineHandling.Entitize,
                 CheckCharacters = true
             };
+        }
+
+        public static void Write(string path, Table t, Options o)
+        {
             string rootName = SafeName(string.IsNullOrEmpty(o.Root) ? "Data" : o.Root);
             string rowName = SafeName(string.IsNullOrEmpty(o.Row) ? "Row" : o.Row);
-            var names = new string[t.Columns.Count];
-            for (int i = 0; i < names.Length; i++) names[i] = SafeName(t.Columns[i]);
             using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write))
-            using (var w = XmlWriter.Create(fs, settings))
+            using (var w = XmlWriter.Create(fs, WriterSettings(o)))
             {
                 w.WriteStartDocument();
                 w.WriteStartElement(rootName);
-                foreach (var r in t.Rows)
+                WriteRows(w, t, rowName);
+                w.WriteEndElement();
+                w.WriteEndDocument();
+            }
+        }
+
+        /// <summary>exportmulti: &lt;root&gt;&lt;Table&gt;&lt;Row&gt;...&lt;/Row&gt;&lt;/Table&gt;...&lt;/root&gt;</summary>
+        public static void WriteMulti(string path, List<KeyValuePair<string, Table>> tables, Options o)
+        {
+            string rootName = SafeName(string.IsNullOrEmpty(o.Root) ? "Data" : o.Root);
+            string rowName = SafeName(string.IsNullOrEmpty(o.Row) ? "Row" : o.Row);
+            using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write))
+            using (var w = XmlWriter.Create(fs, WriterSettings(o)))
+            {
+                w.WriteStartDocument();
+                w.WriteStartElement(rootName);
+                foreach (var kv in tables)
                 {
-                    w.WriteStartElement(rowName);
-                    for (int c = 0; c < names.Length; c++)
-                    {
-                        string v = r[c] ?? "";
-                        if (t.TypeOf(c) == 'N') v = v.Trim();
-                        w.WriteStartElement(names[c]);
-                        if (v.Length > 0) w.WriteString(Values.XmlSafe(v));
-                        w.WriteEndElement();
-                    }
+                    w.WriteStartElement(SafeName(kv.Key));
+                    WriteRows(w, kv.Value, rowName);
                     w.WriteEndElement();
                 }
                 w.WriteEndElement();
                 w.WriteEndDocument();
+            }
+        }
+
+        static void WriteRows(XmlWriter w, Table t, string rowName)
+        {
+            var names = new string[t.Columns.Count];
+            for (int i = 0; i < names.Length; i++) names[i] = SafeName(t.Columns[i]);
+            foreach (var r in t.Rows)
+            {
+                w.WriteStartElement(rowName);
+                for (int c = 0; c < names.Length; c++)
+                {
+                    string v = r[c] ?? "";
+                    if (t.TypeOf(c) == 'N') v = v.Trim();
+                    w.WriteStartElement(names[c]);
+                    if (v.Length > 0) w.WriteString(Values.XmlSafe(v));
+                    w.WriteEndElement();
+                }
+                w.WriteEndElement();
             }
         }
     }

@@ -45,15 +45,32 @@ This copies `template\win\*.tpl/.tpw` to `accessory\template\win`, `libsrc\win\*
    Settings: helper path, INI file for saved mappings, default format, tables to exclude,
    "copy the helper to the output folder", delete mode for *Replace all*.
 2. Then either:
-   - **Control template** `MyImportExportButtons` on a browse: *Import...* / *Export...* buttons
-     (or one button with a menu). The browse refreshes after an import.
-   - **Code template** `MyImportExportCall`: a chosen table, the primary table, or a table picker.
-   - Or call the generated procedure from your own code:
+   - **Control template** `MyImportExportButtons` on a browse: *Import...* / *Export...* buttons,
+     optionally *Export tables...* (or one button with a menu). The browse refreshes after an import.
+   - **Code template** `MyImportExportCall`: a chosen table, the primary table, a table picker, or
+     *Export several tables*.
+   - Or call the generated procedures from your own code:
 
 ```clarion
   MIE_ImportExport('Customer', MIE:Mode:Import)   ! mode 0 = let the user choose
   MIE_ImportExport('')                            ! shows a table picker first
+  MIE_ExportTables()                              ! several tables into one file
+  MIE_ExportTables('Customer,Product')            ! ... with these pre-ticked
 ```
+
+### Several tables in one file
+
+`MIE_ExportTables` opens a window where you tick tables, choose the format and the file:
+
+| Format | Result |
+|---|---|
+| XLSX, XLS | one sheet per table, named after the table |
+| JSON | one collection per table: `{"Customer":[...], "Product":[...]}` |
+| XML | one element per table: `<Data><Customer><Row>…</Row></Customer><Product>…</Product></Data>` |
+| CSV, TSV | can hold only one table, so one file per table: `backup_Customer.csv`, `backup_Product.csv` |
+
+Each table uses the columns, order and headers saved for it in the single-table window. The ticked
+tables, format and file are remembered for next time.
 
 Ship `MIEConvert.exe` next to your program's exe.
 
@@ -137,6 +154,8 @@ Derive the class to change table I/O (`OpenTable`, `InsertRecord`, `UpdateRecord
 ## Tests
 
 - `pwsh test\build.ps1`: all six formats round-trip through the Clarion class with 0 differences,
-  and add-or-update import works.
-- `helper\tests\run_tests.py`: 29/29 checks. Our files were verified in openpyxl, xlrd and Excel 16.
+  add-or-update import works, and two tables export into one JSON, XML, XLSX and XLS file (and one
+  CSV file each).
+- `helper\tests\run_tests.py`: 36/36 checks, including several tables per file and Excel sheet-name
+  cleanup. Our files were verified in openpyxl, xlrd and Excel 16.
 - Template: generated and compiled for ABC single-EXE, multi-DLL (data DLL + consumer EXE) and Legacy.

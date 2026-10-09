@@ -363,14 +363,13 @@ namespace MIEConvert
             }
             sb.Append('"');
         }
-
+
         public static void Write(string path, Table t, Options o)
         {
             Encoding enc = TextEnc.ForOutput(o.Encoding);
             bool ascii = !TextEnc.IsUnicode(enc);
             using (var w = new StreamWriter(path, false, enc, 1 << 16))
             {
-                w.NewLine = "\r\n";
                 string ind = "  ";
                 if (!string.IsNullOrEmpty(o.Root))
                 {
@@ -379,36 +378,61 @@ namespace MIEConvert
                     w.Write("{\r\n  " + sbr + ": ");
                     ind = "    ";
                 }
-                w.Write("[");
-                var sb = new StringBuilder();
-                var keys = new string[t.Columns.Count];
-                for (int i = 0; i < keys.Length; i++) { sb.Clear(); WriteString(sb, t.Columns[i], ascii); keys[i] = sb.ToString(); }
-                for (int r = 0; r < t.Rows.Count; r++)
-                {
-                    sb.Clear();
-                    sb.Append(r == 0 ? "\r\n" : ",\r\n").Append(ind).Append('{');
-                    string[] row = t.Rows[r];
-                    for (int c = 0; c < keys.Length; c++)
-                    {
-                        if (c > 0) sb.Append(',');
-                        sb.Append("\r\n").Append(ind).Append("  ").Append(keys[c]).Append(": ");
-                        string v = row[c] ?? "";
-                        if (t.TypeOf(c) == 'N')
-                        {
-                            if (v.Trim().Length == 0) { sb.Append("null"); continue; }
-                            string num = Values.NormalizeNumberText(v);
-                            if (num != null) { sb.Append(num); continue; }
-                        }
-                        WriteString(sb, v, ascii);
-                    }
-                    sb.Append("\r\n").Append(ind).Append('}');
-                    w.Write(sb.ToString());
-                }
-                if (t.Rows.Count > 0) w.Write("\r\n" + ind.Substring(2));
-                w.Write("]");
+                WriteArray(w, t, ind, ascii);
                 if (!string.IsNullOrEmpty(o.Root)) w.Write("\r\n}");
                 w.Write("\r\n");
             }
+        }
+
+        /// <summary>exportmulti: one object with one array per table, in order.</summary>
+        public static void WriteMulti(string path, List<KeyValuePair<string, Table>> tables, Options o)
+        {
+            Encoding enc = TextEnc.ForOutput(o.Encoding);
+            bool ascii = !TextEnc.IsUnicode(enc);
+            using (var w = new StreamWriter(path, false, enc, 1 << 16))
+            {
+                w.Write("{");
+                for (int i = 0; i < tables.Count; i++)
+                {
+                    var sbr = new StringBuilder();
+                    WriteString(sbr, tables[i].Key, ascii);
+                    w.Write((i == 0 ? "\r\n  " : ",\r\n  ") + sbr + ": ");
+                    WriteArray(w, tables[i].Value, "    ", ascii);
+                }
+                w.Write(tables.Count > 0 ? "\r\n}\r\n" : "}\r\n");
+            }
+        }
+
+        /// <summary>Writes the rows of a table as a JSON array of objects; ind = indentation of the objects.</summary>
+        static void WriteArray(TextWriter w, Table t, string ind, bool ascii)
+        {
+            w.Write("[");
+            var sb = new StringBuilder();
+            var keys = new string[t.Columns.Count];
+            for (int i = 0; i < keys.Length; i++) { sb.Clear(); WriteString(sb, t.Columns[i], ascii); keys[i] = sb.ToString(); }
+            for (int r = 0; r < t.Rows.Count; r++)
+            {
+                sb.Clear();
+                sb.Append(r == 0 ? "\r\n" : ",\r\n").Append(ind).Append('{');
+                string[] row = t.Rows[r];
+                for (int c = 0; c < keys.Length; c++)
+                {
+                    if (c > 0) sb.Append(',');
+                    sb.Append("\r\n").Append(ind).Append("  ").Append(keys[c]).Append(": ");
+                    string v = row[c] ?? "";
+                    if (t.TypeOf(c) == 'N')
+                    {
+                        if (v.Trim().Length == 0) { sb.Append("null"); continue; }
+                        string num = Values.NormalizeNumberText(v);
+                        if (num != null) { sb.Append(num); continue; }
+                    }
+                    WriteString(sb, v, ascii);
+                }
+                sb.Append("\r\n").Append(ind).Append('}');
+                w.Write(sb.ToString());
+            }
+            if (t.Rows.Count > 0) w.Write("\r\n" + ind.Substring(2));
+            w.Write("]");
         }
     }
 }

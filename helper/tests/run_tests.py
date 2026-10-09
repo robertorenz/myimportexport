@@ -761,6 +761,205 @@ def t_empty():
     return "all formats"
 
 
+# ----------------------------------------------------------------------------- exportmulti
+
+MULTI = [
+    ("Customer", ["ID", "Name", "Since", "At", "Balance"], ["N", "S", "D", "T", "N"], [
+        ["1", "Smith, John", "1980-05-17", "08:30:00", "12.5"],
+        ["2", "José \"Pepe\" Muñoz", "2024-02-29", "23:59:59", "-3"],
+        ["3", "multi\nline\ttab \\ back", "", "", ""],
+    ]),
+    ("Product", ["Code", "Price", "Desc"], ["S", "N", "S"], [
+        ["007", "100", "ñandú"],
+        ["A-1", "", "<b>&amp;</b>"],
+    ]),
+    ("Empty Table", ["A", "B"], ["S", "N"], []),
+]
+
+
+def multi_list(tables=MULTI, name="multi_list.txt"):
+    lines = []
+    for i, (tname, cols, types, rows) in enumerate(tables):
+        tsv = p("multi_%d.tsv" % i)
+        write_export_tsv(tsv, cols, types, rows)
+        lines.append("%s\t%s" % (tname, tsv))
+        if i == 0:
+            lines.append("")  # blank lines are ignored
+    path = p(name)
+    with open(path, "wb") as f:
+        f.write(("\r\n".join(lines) + "\r\n\r\n").encode(ANSI))
+    return path
+
+
+def import_sheet(path, sheet):
+    back = p("multi_back.tsv")
+    run("import", path, back, "--sheet", sheet)
+    return read_import_tsv(back)
+
+
+@test("exportmulti json: one object, one array per table")
+def t_multi_json():
+    out = p("multi.json")
+    run("exportmulti", multi_list(), out, "--root", "ignored")
+    data = json.load(open(out, encoding="utf-8-sig"))
+    eq(list(data.keys()), ["Customer", "Product", "Empty Table"], "keys/order")
+    c = data["Customer"]
+    eq(len(c), 3, "customer rows")
+    eq(c[0], {"ID": 1, "Name": "Smith, John", "Since": "1980-05-17", "At": "08:30:00", "Balance": 12.5}, "row 1")
+    eq(c[1]["Name"], 'José "Pepe" Muñoz', "quotes/accents")
+    eq(c[2]["Name"], "multi\nline\ttab \\ back", "escapes")
+    eq(c[2]["Balance"], None, "empty N -> null")
+    eq(c[2]["Since"], "", "empty D -> empty string")
+    eq(data["Product"], [{"Code": "007", "Price": 100, "Desc": "ñandú"}, {"Code": "A-1", "Price": None, "Desc": "<b>&amp;</b>"}], "product")
+    eq(data["Empty Table"], [], "empty table")
+    # the generic json importer can still read each collection
+    back = p("multi_json_back.tsv")
+    run("import", out, back, "--rowpath", "Product")
+    eq(read_import_tsv(back), (["Code", "Price", "Desc"], [["007", "100", "ñandú"], ["A-1", "", "<b>&amp;</b>"]]), "re-import Product")
+    return "keys in order, N numbers / null, [] for empty, --root ignored"
+
+
+@test("exportmulti xml: <Data><Table><Row>..")
+def t_multi_xml():
+    import xml.etree.ElementTree as ET
+    out = p("multi.xml")
+    run("exportmulti", multi_list(), out)
+    root = ET.parse(out).getroot()
+    eq(root.tag, "Data", "root")
+    eq([t.tag for t in root], ["Customer", "Product", "Empty_Table"], "tables/order (sanitised)")
+    cust = root[0]
+    eq([r.tag for r in cust], ["Row"] * 3, "rows")
+    eq([(e.tag, e.text or "") for e in cust[1]],
+       [("ID", "2"), ("Name", 'José "Pepe" Muñoz'), ("Since", "2024-02-29"), ("At", "23:59:59"), ("Balance", "-3")], "row 2")
+    eq(cust[2].find("Name").text, "multi\nline\ttab \\ back", "escapes")
+    eq(root[1][1].find("Desc").text, "<b>&amp;</b>", "markup text")
+    eq(len(root[2]), 0, "empty table has no rows")
+    out2 = p("multi2.xml")
+    run("exportmulti", multi_list(), out2, "--root", "Export Set", "--row", "rec")
+    r2 = ET.parse(out2).getroot()
+    eq((r2.tag, r2[0][0].tag, r2[1][0].tag), ("Export_Set", "rec", "rec"), "--root/--row")
+    back = p("multi_xml_back.tsv")
+    run("import", out, back, "--rowpath", "Row", "--maxrows", "1")
+    eq(read_import_tsv(back)[1], [["1", "Smith, John", "1980-05-17", "08:30:00", "12.5"]], "re-import")
+    return "Customer/Product/Empty_Table in order, --root/--row honoured"
+
+
+def check_multi_values(path):
+    eq(import_sheet(path, "Customer"),
+       (MULTI[0][1], [["1", "Smith, John", "1980-05-17", "08:30:00", "12.5"],
+                      ["2", 'José "Pepe" Muñoz', "2024-02-29", "23:59:59", "-3"],
+                      ["3", "multi\nline\ttab \\ back", "", "", ""]]), "Customer via MIEConvert")
+    eq(import_sheet(path, "Product"), (MULTI[1][1], MULTI[1][3]), "Product via MIEConvert")
+    eq(import_sheet(path, "Empty Table"), (["A", "B"], []), "Empty Table via MIEConvert")
+    sl = p("multi_sheets.txt")
+    run("sheets", path, sl)
+    eq(open(sl, encoding=ANSI, newline="").read(), "Customer\r\nProduct\r\nEmpty Table\r\n", "sheets command")
+
+
+@test("exportmulti xlsx: one sheet per table (openpyxl)")
+def t_multi_xlsx():
+    out = p("multi.xlsx")
+    # an existing file is overwritten, never merged
+    run("export", sample_tsv(), out, "--sheet", "Stale")
+    run("exportmulti", multi_list(), out)
+    check_multi_values(out)
+    if openpyxl is None:
+        raise AssertionError("openpyxl not installed")
+    wb = openpyxl.load_workbook(out)
+    eq(wb.sheetnames, ["Customer", "Product", "Empty Table"], "sheet names/order")
+    ws = wb["Customer"]
+    eq([c.value for c in ws[1]], MULTI[0][1], "header")
+    assert ws["A1"].font.b, "bold header"
+    eq(ws["A2"].value, 1, "N cell")
+    eq(ws["E2"].value, 12.5, "N cell 12.5")
+    assert isinstance(ws["C2"].value, datetime.datetime) and ws["C2"].value.date() == datetime.date(1980, 5, 17)
+    eq(ws["C2"].number_format, "yyyy-mm-dd", "date format")
+    eq(ws["D3"].number_format, "hh:mm:ss", "time format")
+    eq(wb["Product"]["A2"].value, "007", "text stays text")
+    eq(wb["Product"]["B3"].value, None, "empty N blank")
+    e = wb["Empty Table"]
+    eq((e.max_row, [c.value for c in e[1]]), (1, ["A", "B"]), "empty table = header only")
+    return "3 sheets in order, typed cells, bold header, overwrite"
+
+
+@test("exportmulti xls: multiple BIFF8 sheets (xlrd)")
+def t_multi_xls():
+    out = p("multi.xls")
+    run("exportmulti", multi_list(), out)
+    check_multi_values(out)
+    if xlrd is None:
+        raise AssertionError("xlrd not installed")
+    book = xlrd.open_workbook(out, formatting_info=True)
+    eq(book.sheet_names(), ["Customer", "Product", "Empty Table"], "sheet names/order")
+    sh = book.sheet_by_name("Customer")
+    eq(sh.row_values(0), MULTI[0][1], "header")
+    eq(sh.cell_value(1, 0), 1.0, "number")
+    eq(sh.cell_type(1, 2), xlrd.XL_CELL_DATE, "date cell")
+    eq(xlrd.xldate_as_tuple(sh.cell_value(2, 2), book.datemode)[:3], (2024, 2, 29), "date value")
+    eq(sh.cell_type(2, 3), xlrd.XL_CELL_DATE, "time cell")
+    eq(sh.cell_value(2, 1), 'José "Pepe" Muñoz', "string")
+    eq(book.sheet_by_name("Product").cell_value(1, 0), "007", "text stays text")
+    eq(book.sheet_by_name("Product").cell_type(2, 1), xlrd.XL_CELL_EMPTY, "empty N")
+    e = book.sheet_by_name("Empty Table")
+    eq((e.nrows, e.row_values(0)), (1, ["A", "B"]), "empty table = header only")
+    font = book.font_list[book.xf_list[sh.cell_xf_index(0, 0)].font_index]
+    assert font.bold, "bold header"
+    return "3 sheets in order, shared SST, typed cells"
+
+
+@test("exportmulti --noheader (xlsx/xls)")
+def t_multi_noheader():
+    for fmt in ("xlsx", "xls"):
+        out = p("multi_nh." + fmt)
+        run("exportmulti", multi_list(), out, "--noheader")
+        back = p("multi_nh_back.tsv")
+        run("import", out, back, "--sheet", "Product", "--noheader")
+        eq(read_import_tsv(back), (["Column1", "Column2", "Column3"], MULTI[1][3]), fmt)
+    return "data starts in row 1"
+
+
+@test("exportmulti sheet-name sanitising + dedupe")
+def t_multi_names():
+    names = ["a/b:c", "a_b_c", "A_B_C", "'quoted'", "   ", "x" * 40, "X" * 35, "Hist[or]y?*", "History", "Sheet5"]
+    expected = ["a_b_c", "a_b_c (2)", "A_B_C (3)", "quoted", "Sheet5", "x" * 31, "X" * 27 + " (2)", "Hist_or_y__", "History_", "Sheet5 (2)"]
+    tables = [(n, ["V"], ["N"], [[str(i)]]) for i, n in enumerate(names)]
+    lst = multi_list(tables, "names_list.txt")
+    for fmt in ("xlsx", "xls"):
+        out = p("names." + fmt)
+        run("exportmulti", lst, out)
+        sl = p("names_sheets.txt")
+        run("sheets", out, sl)
+        eq(open(sl, encoding=ANSI, newline="").read().split("\r\n")[:-1], expected, fmt + " sheets")
+        for i, n in enumerate(expected):
+            assert len(n) <= 31
+            eq(import_sheet(out, n), (["V"], [[str(i)]]), "%s sheet %r" % (fmt, n))
+    if openpyxl is not None:
+        eq(openpyxl.load_workbook(p("names.xlsx")).sheetnames, expected, "openpyxl")
+    if xlrd is not None:
+        eq(xlrd.open_workbook(p("names.xls")).sheet_names(), expected, "xlrd")
+    return "invalid chars, apostrophes, blank, 31-char cut, case-insensitive ' (n)' dedupe"
+
+
+@test("exportmulti errors: csv/tsv, xls limits name the table, bad list")
+def t_multi_errors():
+    lst = multi_list()
+    for fmt in ("csv", "tsv"):
+        msg = run("exportmulti", lst, p("multi." + fmt), expect=1)
+        assert "one table per file" in msg, msg
+        assert not os.path.exists(p("multi." + fmt)), "no output on error"
+    wide = [("Wide/One", ["C%d" % i for i in range(257)], ["S"] * 257, [["x"] * 257])]
+    msg = run("exportmulti", multi_list(wide, "wide_list.txt"), p("wide.xls"), expect=1)
+    assert "Wide/One" in msg and "256" in msg, msg
+    bad = p("bad_list.txt")
+    open(bad, "w").write("NoTabHere\r\n")
+    msg = run("exportmulti", bad, p("bad.json"), expect=1)
+    assert "line 1" in msg, msg
+    open(bad, "w").write("T\t" + p("missing.tsv") + "\r\n")
+    msg = run("exportmulti", bad, p("bad.json"), expect=1)
+    assert "'T'" in msg and "not found" in msg, msg
+    return "csv/tsv refused; 'Wide/One' named in 256-column error; list errors"
+
+
 # ----------------------------------------------------------------------------- main
 
 def main():

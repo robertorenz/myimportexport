@@ -11,7 +11,10 @@
 #!                            _MIEDllMode_ / _MIELinkMode_ project defines,
 #!                            and (where requested) generates the global
 #!                            procedure MIE_ImportExport(STRING,BYTE=0),BYTE
-#!                            in its own module <program>_MIE.clw.
+#!                            and MIE_ExportTables(<STRING>),BYTE (several
+#!                            tables into one file) in their own module
+#!                            <program>_MIE.clw, sharing one dictionary-bound
+#!                            class MIE_DictClass (SetupTable + ABC hooks).
 #!     MyImportExportButtons  WINDOW control template: Import... / Export...
 #!                            buttons (or one button that asks).
 #!     MyImportExportCall     CODE template: call MIE_ImportExport anywhere.
@@ -35,7 +38,7 @@
 #EXTENSION(MyImportExportGlobal,'MyImportExport - global support (add once to every app)'),APPLICATION,DESCRIPTION('MyImportExport - import / export any dictionary table')
 #SHEET,HSCROLL
   #TAB('&General')
-    #DISPLAY('MyImportExport template build 2026-10-09a')
+    #DISPLAY('MyImportExport template build 2026-10-09b')
     #PROMPT('&Disable MyImportExport in this application',CHECK),%MIEDisable,DEFAULT(0),AT(10)
     #BOXED('The MIE_ImportExport procedure')
       #PROMPT('&Generate MIE_ImportExport in this application',CHECK),%MIEGenerate,DEFAULT(%GlobalExternal=0),AT(10)
@@ -166,10 +169,12 @@
   #IF(%MIEGenerate)
      MODULE('%MIEModuleFile')
        MIE_ImportExport(STRING,BYTE=0),BYTE,PROC
+       MIE_ExportTables(<STRING>),BYTE,PROC
      END
   #ELSE
      MODULE('MIE_ImportExport_DLL')
        MIE_ImportExport(STRING,BYTE=0),BYTE,PROC,DLL
+       MIE_ExportTables(<STRING>),BYTE,PROC,DLL
      END
   #ENDIF
 #ENDAT
@@ -221,8 +226,9 @@
 #!----------------------------------------------------------------------------
 #AT(%DLLExportList),WHERE(%MIEDisable=0 AND UPPER(%ProgramExtension)='DLL')
   #IF(%MIEGenerate)
-; MyImportExport: the generated procedure
+; MyImportExport: the generated procedures
   %[55](LINKNAME('MIE_ImportExport(STRING,BYTE),BYTE')) @?
+  %[55](LINKNAME('MIE_ExportTables(<<STRING>),BYTE')) @?
   #ENDIF
   #IF(%MIEDoExportClass)
     #IF(%MIEIncFound)
@@ -246,6 +252,7 @@
   CONTROLS
     BUTTON('&Import...'),AT(,,50,14),USE(?MIEImport)
     BUTTON('E&xport...'),AT(52,0,50,14),USE(?MIEExport)
+    BUTTON('Export &tables...'),AT(104,0,64,14),USE(?MIEExportTables)
   END
 #SHEET
   #TAB('&General')
@@ -260,12 +267,16 @@
     #DISPLAY('One button: the Import button becomes "Import / Export..." and pops a')
     #DISPLAY('menu; the Export button is hidden (you may move it out of the way).')
     #PROMPT('&Refresh the window after a successful import',CHECK),%MIEBtnRefresh,DEFAULT(1),AT(10)
+    #PROMPT('Show the "Export &tables..." button (several tables, one file)',CHECK),%MIEBtnTables,DEFAULT(0),AT(10)
+    #DISPLAY('Unticked, that button is hidden at run time. The one-button style')
+    #DISPLAY('always offers "Export several tables..." as a third menu item.')
   #ENDTAB
 #ENDSHEET
 #!
 #ATSTART
   #DECLARE(%MIEImportCtl)
   #DECLARE(%MIEExportCtl)
+  #DECLARE(%MIETablesCtl)
   #DECLARE(%MIEBtnCallTable)
   #FOR(%Control),WHERE(%ControlInstance = %ActiveTemplateInstance)
     #CASE(%ControlOriginal)
@@ -273,6 +284,8 @@
       #SET(%MIEImportCtl,%Control)
     #OF('?MIEExport')
       #SET(%MIEExportCtl,%Control)
+    #OF('?MIEExportTables')
+      #SET(%MIETablesCtl,%Control)
     #ENDCASE
   #ENDFOR
   #CASE(%MIEBtnTableSource)
@@ -285,22 +298,31 @@
   #ENDCASE
 #ENDAT
 #!
-#AT(%AfterWindowOpening),WHERE(%MIEBtnDisable=0 AND SUB(%MIEBtnStyle,1,3)='One')
-  #IF(%MIEImportCtl)
+#AT(%AfterWindowOpening),WHERE(%MIEBtnDisable=0)
+  #IF(SUB(%MIEBtnStyle,1,3)='One')
+    #IF(%MIEImportCtl)
 %MIEImportCtl{PROP:Text} = 'Import / E&xport...'
-  #ENDIF
-  #IF(%MIEExportCtl)
+    #ENDIF
+    #IF(%MIEExportCtl)
 %MIEExportCtl{PROP:Hide} = True
+    #ENDIF
+    #IF(%MIETablesCtl)
+%MIETablesCtl{PROP:Hide} = True
+    #ENDIF
+  #ELSIF(NOT %MIEBtnTables AND %MIETablesCtl)
+%MIETablesCtl{PROP:Hide} = True
   #ENDIF
 #ENDAT
 #!
 #AT(%ControlEventHandling,%MIEImportCtl,'Accepted'),WHERE(%MIEBtnDisable=0)
   #IF(SUB(%MIEBtnStyle,1,3)='One')
-CASE POPUP('&Import...|E&xport...')
+CASE POPUP('&Import...|E&xport...|Export several &tables...')
 OF 1
   #INSERT(%MIECallAndRefresh,%MIEBtnCallTable,'MIE:Mode:Import',%MIEBtnRefresh)
 OF 2
   #INSERT(%MIECallAndRefresh,%MIEBtnCallTable,'MIE:Mode:Export',0)
+OF 3
+  MIE_ExportTables()
 END
   #ELSE
 #INSERT(%MIECallAndRefresh,%MIEBtnCallTable,'MIE:Mode:Import',%MIEBtnRefresh)
@@ -309,6 +331,10 @@ END
 #!
 #AT(%ControlEventHandling,%MIEExportCtl,'Accepted'),WHERE(%MIEBtnDisable=0 AND SUB(%MIEBtnStyle,1,3)<>'One')
 #INSERT(%MIECallAndRefresh,%MIEBtnCallTable,'MIE:Mode:Export',0)
+#ENDAT
+#!
+#AT(%ControlEventHandling,%MIETablesCtl,'Accepted'),WHERE(%MIEBtnDisable=0 AND %MIEBtnTables AND SUB(%MIEBtnStyle,1,3)<>'One')
+MIE_ExportTables()
 #ENDAT
 #!
 #!
@@ -320,13 +346,15 @@ END
 #ENABLE(%MIECallTableSource='A specific table'),CLEAR
   #PROMPT('&Specific table:',FROM(%File)),%MIECallTable,DEFAULT('')
 #ENDENABLE
-#PROMPT('&Mode:',DROP('Ask the user|Export|Import')),%MIECallMode,DEFAULT('Ask the user')
+#PROMPT('&Mode:',DROP('Ask the user|Export|Import|Export several tables')),%MIECallMode,DEFAULT('Ask the user')
+#DISPLAY('Export several tables: the user ticks the tables; the table prompt is ignored.')
 #PROMPT('Store the &result in (optional):',FIELD),%MIECallResult,DEFAULT('')
 #DISPLAY('Result: 1 = something was imported / exported, 0 = cancelled / failed.')
 #PROMPT('Re&fresh the window when the result is 1',CHECK),%MIECallRefresh,DEFAULT(0),AT(10)
 #!
 #DECLARE(%MIECallTableName)
 #DECLARE(%MIECallModeEquate)
+#DECLARE(%MIECallExpr)
 #CASE(%MIECallTableSource)
 #OF('A specific table')
   #SET(%MIECallTableName,%MIECallTable)
@@ -343,19 +371,24 @@ END
 #ELSE
   #SET(%MIECallModeEquate,'0')
 #ENDCASE
+#IF(%MIECallMode='Export several tables')
+  #SET(%MIECallExpr,'MIE_ExportTables()')
+#ELSE
+  #SET(%MIECallExpr,'MIE_ImportExport(''' & %MIECallTableName & ''',' & %MIECallModeEquate & ')')
+#ENDIF
 #IF(%MIECallResult)
-%MIECallResult = MIE_ImportExport('%MIECallTableName',%MIECallModeEquate)
+%MIECallResult = %MIECallExpr
   #IF(%MIECallRefresh)
 IF %MIECallResult
   #INSERT(%MIERefreshWindow)
 END
   #ENDIF
 #ELSIF(%MIECallRefresh)
-IF MIE_ImportExport('%MIECallTableName',%MIECallModeEquate)
+IF %MIECallExpr
   #INSERT(%MIERefreshWindow)
 END
 #ELSE
-MIE_ImportExport('%MIECallTableName',%MIECallModeEquate)
+%MIECallExpr
 #ENDIF
 #!
 #!

@@ -14,6 +14,8 @@
     RoundTrip(STRING pFormat,STRING pExt,<STRING pSheet>)
     CompareTables(STRING pWhat),LONG
     UpsertTest()
+    MultiTest()
+    MultiOne(STRING pFormat,STRING pExt)
   END
 
 Customer             FILE,DRIVER('TOPSPEED'),NAME('customer.tps'),PRE(CUS),CREATE,THREAD
@@ -54,6 +56,9 @@ Line                     STRING(1000)
 
 Failures             LONG
 CurMie               &MyImportExportClass
+TestMie              CLASS(MyImportExportClass)
+SetupTable             PROCEDURE(STRING pName),BYTE,DERIVED
+                     END
 
   CODE
   CREATE(LogFile)
@@ -70,6 +75,7 @@ CurMie               &MyImportExportClass
   RoundTrip('XLSX','xlsx','Customers')
   RoundTrip('XLS','xls','Customers')
   UpsertTest()
+  MultiTest()
   WriteLog('FAILURES: ' & Failures)
   HALT(Failures)
 
@@ -278,3 +284,58 @@ Imp                  MyImportExportClass
     WriteLog('UPSERT: record 2 wrong: ' & CLIP(CPY:Name) & ' / ' & CPY:City)
   END
   CLOSE(CustCopy)
+
+TestMie.SetupTable   PROCEDURE(STRING pName)
+  CODE
+  CurMie &= SELF
+  CASE UPPER(pName)
+  OF 'CUSTOMER'
+    SetupFields(0)
+  OF 'CUSTCOPY'
+    SetupFields(1)
+  ELSE
+    RETURN 1
+  END
+  RETURN 0
+
+MultiTest            PROCEDURE
+  CODE
+  MultiOne('JSON','json')
+  MultiOne('XML','xml')
+  MultiOne('XLSX','xlsx')
+  MultiOne('XLS','xls')
+  MultiOne('CSV','csv')
+
+MultiOne             PROCEDURE(STRING pFormat,STRING pExt)
+I                    LONG
+  CODE
+  TestMie.Init()
+  TestMie.Silent  = 1
+  TestMie.IniFile = ''
+  TestMie.AddTable('Customer','Customers')
+  TestMie.AddTable('CustCopy','Copy of customers')
+  TestMie.AddTable('Nothing','not selected')
+  LOOP I = 1 TO 2
+    GET(TestMie.Tables,I)
+    TestMie.Tables.Selected = 1
+    PUT(TestMie.Tables)
+  END
+  TestMie.Format   = pFormat
+  TestMie.FileName = LONGPATH() & '\out_multi.' & pExt
+  REMOVE(TestMie.FileName)
+  IF TestMie.ExportTables()
+    Failures += 1
+    WriteLog('MULTI ' & pFormat & ' FAILED: ' & TestMie.ErrorText)
+  ELSE
+    WriteLog('MULTI ' & pFormat & ': ' & RECORDS(TestMie.Batch) & ' tables, ' & TestMie.Processed & ' records')
+    IF RECORDS(TestMie.Batch) <> 2 THEN Failures += 1.
+    IF TestMie.IsMultiFormat()
+      IF NOT EXISTS(TestMie.FileName) THEN Failures += 1; WriteLog('  missing ' & TestMie.FileName).
+    ELSE
+      IF NOT EXISTS(TestMie.BatchFileName('Customer')) OR NOT EXISTS(TestMie.BatchFileName('CustCopy'))
+        Failures += 1
+        WriteLog('  missing per-table files')
+      END
+    END
+  END
+  TestMie.Kill()

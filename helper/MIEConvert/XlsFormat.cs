@@ -534,13 +534,27 @@ namespace MIEConvert
         public static void Write(string path, Table t, Options o)
         {
             string sheetName = ExcelUtil.SafeSheetName(string.IsNullOrEmpty(o.Sheet) ? "Sheet1" : o.Sheet);
+            WriteBook(path, new List<KeyValuePair<string, Table>> { new KeyValuePair<string, Table>(sheetName, t) }, o, false);
+        }
+
+        /// <summary>Writes a BIFF8 workbook with one worksheet per table (names must already be valid and unique).</summary>
+        public static void WriteBook(string path, List<KeyValuePair<string, Table>> tables, Options o, bool nameInErrors)
+        {
+            var sst = new SstBuilder();
+            var sheetStreams = new List<byte[]>();
+            for (int i = 0; i < tables.Count; i++)
+                sheetStreams.Add(BuildSheet(tables[i].Value, o, sst, i == 0, nameInErrors ? tables[i].Key : null));
+            WriteGlobalsAndSave(path, tables.Select(x => x.Key).ToList(), sheetStreams, sst);
+        }
+
+        static byte[] BuildSheet(Table t, Options o, SstBuilder sst, bool selected, string tableName)
+        {
             int nCols = t.Columns.Count;
             int nRows = t.Rows.Count + (o.NoHeader ? 0 : 1);
-            if (nCols > 256) throw new MieException("The .xls format supports at most 256 columns (" + nCols + " requested). Use xlsx.");
-            if (nRows > 65536) throw new MieException("The .xls format supports at most 65536 rows (" + nRows + " requested). Use xlsx.");
+            string who = tableName == null ? "" : "Table '" + tableName + "': ";
+            if (nCols > 256) throw new MieException(who + "the .xls format supports at most 256 columns (" + nCols + " requested). Use xlsx.");
+            if (nRows > 65536) throw new MieException(who + "the .xls format supports at most 65536 rows (" + nRows + " requested). Use xlsx.");
 
-            // ---- cells first (so the SST is complete)
-            var sst = new SstBuilder();
             var sheet = new Rec();
             sheet.Record(BOF, (ushort)0x0600, (ushort)0x0010, (ushort)0x0DBB, (ushort)0x07CC, 0, 6);
             sheet.Record(DEFCOLWIDTH, (ushort)8);
@@ -598,9 +612,13 @@ namespace MIEConvert
                 rowNo++;
             }
             flush();
-            sheet.Record(WINDOW2, (ushort)0x06B6, (ushort)0, (ushort)0, (ushort)0x40, (ushort)0, (ushort)0, (ushort)0, 0);
+            sheet.Record(WINDOW2, (ushort)(selected ? 0x06B6 : 0x00B6), (ushort)0, (ushort)0, (ushort)0x40, (ushort)0, (ushort)0, (ushort)0, 0);
             sheet.Record(EOF, new byte[0]);
-            byte[] sheetBytes = sheet.ToArray();
+            return sheet.ToArray();
+        }
+
+        static void WriteGlobalsAndSave(string path, List<string> sheetNames, List<byte[]> sheetStreams, SstBuilder sst)
+        {
 
             // ---- workbook globals
             var gl = new Rec();
@@ -620,18 +638,27 @@ namespace MIEConvert
             gl.Record(XF, XfRec(0, FmtTime, false, 0x04));    // 17 time
             gl.Record(XF, XfRec(5, 0, false, 0x08));          // 18 bold header
             gl.Record(STYLE, (ushort)0x8000, (byte)0, (byte)0xFF);
-            long bsPos = gl.Position;
-            gl.Record(BOUNDSHEET, 0, (byte)0, (byte)0, ShortUnicode(sheetName));
+            var bsPos = new List<long>();
+            foreach (string name in sheetNames)
+            {
+                bsPos.Add(gl.Position);
+                gl.Record(BOUNDSHEET, 0, (byte)0, (byte)0, ShortUnicode(name));
+            }
             WriteSst(gl, sst);
             gl.Record(EOF, new byte[0]);
             byte[] globals = gl.ToArray();
-            // patch the sheet offset in BOUNDSHEET
-            byte[] lb = BitConverter.GetBytes(globals.Length);
-            Array.Copy(lb, 0, globals, (int)bsPos + 4, 4);
+            // patch the sheet offsets in the BOUNDSHEET records
+            int offset = globals.Length;
+            for (int i = 0; i < sheetStreams.Count; i++)
+            {
+                Array.Copy(BitConverter.GetBytes(offset), 0, globals, (int)bsPos[i] + 4, 4);
+                offset += sheetStreams[i].Length;
+            }
 
-            var stream = new byte[Math.Max(4096, globals.Length + sheetBytes.Length)];
+            var stream = new byte[Math.Max(4096, offset)];
             Array.Copy(globals, stream, globals.Length);
-            Array.Copy(sheetBytes, 0, stream, globals.Length, sheetBytes.Length);
+            int at = globals.Length;
+            foreach (byte[] sb in sheetStreams) { Array.Copy(sb, 0, stream, at, sb.Length); at += sb.Length; }
 
             string tmp = path + ".mietmp";
             try

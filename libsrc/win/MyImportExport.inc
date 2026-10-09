@@ -49,11 +49,27 @@ Value                  &STRING
 Len                    LONG
                      END
 
+! Tables offered by the multi-table export (AddTable)
+MIE_TableQueue       QUEUE,TYPE
+Name                   STRING(100)   ! table label, passed to SetupTable
+Description            STRING(128)   ! dictionary description
+Selected               BYTE          ! include in the multi-table export
+                     END
+
+! Tables exported so far in a batch (BatchAdd)
+MIE_BatchQueue       QUEUE,TYPE
+Name                   STRING(100)   ! collection / sheet / element name
+TsvFile                CSTRING(261)  ! its intermediate file
+Records                LONG          ! records written
+                     END
+
 MyImportExportClass  CLASS,TYPE,MODULE('MyImportExport.clw'),LINK('MyImportExport.clw',_MIELinkMode_),DLL(_MIEDllMode_)
 Fields                 &MIE_FieldQueue
 Columns                &MIE_ColumnQueue
 Sheets                 &MIE_SheetQueue
 Values                 &MIE_ValueQueue
+Tables                 &MIE_TableQueue
+Batch                  &MIE_BatchQueue
 TableFile              &FILE
 TableKey               &KEY
 TableName              STRING(100)
@@ -124,6 +140,19 @@ ResolveMap             PROCEDURE,LONG,PROC                ! re-links SourceName 
 GetValue               PROCEDURE(LONG pColumn),STRING     ! import: value of column in current row
 ExeFolder              PROCEDURE,STRING                   ! folder of the running exe, with a trailing backslash
 ResetCounters          PROCEDURE
+! --- several tables in one file -------------------------------------------
+AddTable               PROCEDURE(STRING pName,<STRING pDescription>)  ! offer a table to AskTables / ExportTables
+ExportTsv              PROCEDURE(STRING pTsvFile),BYTE,PROC           ! current table -> intermediate file. 0 = ok
+BatchBegin             PROCEDURE                                      ! start collecting tables
+BatchAdd               PROCEDURE(STRING pName),BYTE,PROC              ! export the current table into the batch
+BatchFinish            PROCEDURE,BYTE,PROC                            ! write FileName in Format with every table. 0 = ok
+BatchCancel            PROCEDURE                                      ! drop the batch and its temp files
+ExportTables           PROCEDURE,BYTE,PROC                            ! every Selected table of Tables -> FileName. 0 = ok
+AskTables              PROCEDURE,BYTE,PROC                            ! window: pick tables, format, file. 1 = exported
+SaveTablesMap          PROCEDURE
+LoadTablesMap          PROCEDURE
+IsMultiFormat          PROCEDURE(<STRING pFormat>),BYTE               ! 1 = JSON, XML, XLSX, XLS (one file holds every table)
+BatchFileName          PROCEDURE(STRING pName),STRING                 ! CSV / TSV: the per-table file name
 ! --- virtual hooks ------------------------------------------------------
 OpenTable              PROCEDURE,BYTE,VIRTUAL
 CloseTable             PROCEDURE,VIRTUAL
@@ -137,6 +166,7 @@ ValidateRecord         PROCEDURE,BYTE,VIRTUAL
 ExportFilter           PROCEDURE,BYTE,VIRTUAL
 TakeProgress           PROCEDURE(LONG pDone,LONG pTotal=0),VIRTUAL
 ShowMessage            PROCEDURE(STRING pText,STRING pCaption,<STRING pIcon>),VIRTUAL
+SetupTable             PROCEDURE(STRING pName),BYTE,VIRTUAL           ! SetTable + AddField for a table by name. 0 = ok
 ! --- internals ------------------------------------------------------------
 RunHelper              PROCEDURE(STRING pArgs),BYTE,PROTECTED
 TempName               PROCEDURE(STRING pExt),STRING,PROTECTED

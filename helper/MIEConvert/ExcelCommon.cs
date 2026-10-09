@@ -88,17 +88,45 @@ namespace MIEConvert
             return true;
         }
 
-        /// <summary>Excel sheet names: max 31 chars, none of : \ / ? * [ ].</summary>
-        public static string SafeSheetName(string name)
+        /// <summary>Excel sheet names: max 31 chars, none of : \ / ? * [ ], not blank,
+        /// no leading/trailing apostrophe, not the reserved name "History".</summary>
+        public static string SafeSheetName(string name, string fallback = "Sheet1")
         {
-            if (string.IsNullOrWhiteSpace(name)) return "Sheet1";
             var sb = new StringBuilder();
-            foreach (char c in name.Trim())
+            foreach (char c in (name ?? ""))
                 sb.Append(":\\/?*[]".IndexOf(c) >= 0 || c < 0x20 ? '_' : c);
-            string s = sb.ToString().Trim('\'');
-            if (s.Length == 0) s = "Sheet1";
-            if (s.Length > 31) s = s.Substring(0, 31);
+            string s = TrimSheetName(sb.ToString());
+            if (s.Length > 31) s = TrimSheetName(s.Substring(0, 31));
+            if (s.Length == 0) s = fallback;
+            if (string.Equals(s, "History", StringComparison.OrdinalIgnoreCase)) s += "_";
             return s;
+        }
+
+        static string TrimSheetName(string s)
+        {
+            return s.Trim().Trim('\'').Trim();
+        }
+
+        /// <summary>Sanitises a list of sheet names and makes them unique (case-insensitive) by appending
+        /// " (2)", " (3)", ... while keeping each name within 31 characters.</summary>
+        public static List<string> UniqueSheetNames(IList<string> names)
+        {
+            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var result = new List<string>();
+            for (int i = 0; i < names.Count; i++)
+            {
+                string b = SafeSheetName(names[i], "Sheet" + (i + 1).ToString(CultureInfo.InvariantCulture));
+                string n = b;
+                for (int k = 2; used.Contains(n); k++)
+                {
+                    string suffix = " (" + k.ToString(CultureInfo.InvariantCulture) + ")";
+                    string stem = b.Length + suffix.Length > 31 ? TrimSheetName(b.Substring(0, 31 - suffix.Length)) : b;
+                    n = stem + suffix;
+                }
+                used.Add(n);
+                result.Add(n);
+            }
+            return result;
         }
 
         /// <summary>A typed export cell.</summary>

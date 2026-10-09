@@ -6,6 +6,17 @@
 #   name: (what it is, worked code)
 
 PROPS = {
+ 'Tables': ("The tables offered by the multi-table export: one row per AddTable call, with the user's tick in Selected.",
+            "LOOP I = 1 TO RECORDS(MIE.Tables)\n"
+            "  GET(MIE.Tables, I)\n"
+            "  MIE.Tables.Selected = CHOOSE(INLIST(MIE.Tables.Name, 'Customer', 'Product') > 0, 1, 0)\n"
+            "  PUT(MIE.Tables)\n"
+            "END"),
+ 'Batch': ("The tables written so far in a multi-table export, with the records each one contributed. ResultText lists them.",
+           "LOOP I = 1 TO RECORDS(MIE.Batch)\n"
+           "  GET(MIE.Batch, I)\n"
+           "  Log(CLIP(MIE.Batch.Name) & ': ' & MIE.Batch.Records)\n"
+           "END"),
  'Fields': ("The fields that can be imported or exported, one row per AddField call, in export column order.",
             "LOOP I = 1 TO RECORDS(MIE.Fields)\n"
             "  GET(MIE.Fields, I)\n"
@@ -111,6 +122,48 @@ PROPS = {
 }
 
 METHODS = {
+ 'AddTable': ("Offers a table to the multi-table export, by its label and an optional description. It starts unticked; LoadTablesMap restores the last selection.",
+              "MIE.AddTable('Customer', 'Customers')\n"
+              "MIE.AddTable('Product',  'Products')"),
+ 'SetupTable': ("Hook. Prepares the object for one table by name: SetTable plus its AddField calls. Return 0 when the table is known. The template generates it with one branch per dictionary table; MIE_ImportExport and ExportTables call it.",
+                "ThisMIE.SetupTable PROCEDURE(STRING pName)\n"
+                "  CODE\n"
+                "  CASE UPPER(pName)\n"
+                "  OF 'CUSTOMER'\n"
+                "    SELF.SetTable(Customer, 'Customer', CUS:KeyId)\n"
+                "    SELF.AddField('CUS:Id', 'Id', 'LONG', '@n_10', CUS:Id, 1)\n"
+                "  ELSE\n"
+                "    RETURN 1\n"
+                "  END\n"
+                "  RETURN 0"),
+ 'ExportTsv': ("Writes the current table's selected fields to an intermediate file without running the helper. Export and BatchAdd are built on it.",
+               "IF MIE.ExportTsv(Tmp) THEN Log(MIE.ErrorText)."),
+ 'BatchBegin': ("Starts a multi-table export: forgets any previous batch and zeroes the counters.",
+                "MIE.BatchBegin()"),
+ 'BatchAdd': ("Exports the current table into the batch under a name, which becomes its JSON collection, XML element or Excel sheet.",
+              "MIE.SetupTable('Customer') ; MIE.LoadMap() ; MIE.BatchAdd('Customer')\n"
+              "MIE.SetupTable('Product')  ; MIE.LoadMap() ; MIE.BatchAdd('Product')"),
+ 'BatchFinish': ("Writes every table in the batch to FileName in Format: one file for JSON, XML, XLSX and XLS, one file per table for CSV and TSV. Returns 0 when it worked.",
+                 "MIE.Format   = 'XLSX'\n"
+                 "MIE.FileName = 'c:\\out\\backup.xlsx'\n"
+                 "IF MIE.BatchFinish() THEN MESSAGE(MIE.ErrorText)."),
+ 'BatchCancel': ("Drops the batch and deletes its temporary files.",
+                 "MIE.BatchCancel()"),
+ 'ExportTables': ("Exports every ticked table of Tables into FileName, each with the columns saved for it. The batch's format, file and picture settings win over each table's saved ones. Returns 0 when it worked.",
+                  "MIE.Format   = 'JSON'\n"
+                  "MIE.FileName = 'c:\\out\\backup.json'\n"
+                  "IF MIE.ExportTables() = 0 THEN MESSAGE(MIE.ResultText())."),
+ 'AskTables': ("Opens the multi-table export window: tick tables, pick the format and the file. Returns 1 when something was exported.",
+               "MIE.LoadTablesMap()\n"
+               "MIE.AskTables()"),
+ 'SaveTablesMap': ("Saves the multi-table settings (format, file, pictures, ticked tables) to the [MIE__Tables] section of IniFile. AskTables does it after a successful export.",
+                   "MIE.SaveTablesMap()"),
+ 'LoadTablesMap': ("Restores what SaveTablesMap stored. Call it after the AddTable calls.",
+                   "MIE.LoadTablesMap()"),
+ 'IsMultiFormat': ("1 when the format (default: Format) can hold several tables in one file: JSON, XML, XLSX, XLS.",
+                   "IF ~MIE.IsMultiFormat() THEN Note = 'one file per table'."),
+ 'BatchFileName': ("CSV and TSV: the file a table goes to, with the table name added to FileName.",
+                   "Log(MIE.BatchFileName('Customer'))       ! c:\\out\\backup.csv -> c:\\out\\backup_Customer.csv"),
  'Construct': ("Creates the queues, sets the defaults (CSV, header row, comma, Add mode) and points HelperPath and IniFile at the program's folder. Runs automatically.",
                "MIE  MyImportExportClass                    ! constructed here"),
  'Destruct': ("Frees every queue and buffer. Runs automatically when the object goes out of scope.",

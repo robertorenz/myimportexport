@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 
@@ -106,7 +107,10 @@ namespace MIEConvert
             "  MIEConvert import <inputFile> <outTsv> [--format f] [--sheet s] [--noheader] [--delimiter c]\r\n" +
             "                    [--encoding e] [--rowpath name] [--maxrows n] [--errfile f]\r\n" +
             "  MIEConvert export <inTsv> <outputFile> [--format f] [--sheet s] [--replacesheet] [--noheader]\r\n" +
-            "                    [--delimiter c] [--encoding e] [--root name] [--row name] [--errfile f]";
+            "                    [--delimiter c] [--encoding e] [--root name] [--row name] [--errfile f]\r\n" +
+            "  MIEConvert exportmulti <listFile> <outputFile> [--format json|xml|xlsx|xls] [--root name] [--row name]\r\n" +
+            "                    [--encoding e] [--noheader] [--codepage n] [--errfile f]\r\n" +
+            "      listFile: one line per table: <name><TAB><MIE-TSV export file>";
 
         static Options Parse(string[] args)
         {
@@ -190,6 +194,7 @@ namespace MIEConvert
                 case "sheets": RunSheets(o); break;
                 case "import": RunImport(o); break;
                 case "export": RunExport(o); break;
+                case "exportmulti": RunExportMulti(o); break;
                 default: throw new MieException("Unknown command '" + o.Command + "'.\r\n" + Usage);
             }
         }
@@ -231,6 +236,60 @@ namespace MIEConvert
             }
             t.Normalize();
             MieTsv.WriteImport(o.Output, t, o.TsvEncoding);
+        }
+
+        static void RunExportMulti(Options o)
+        {
+            RequireInput(o.Input);
+            string fmt = FormatOf(o, o.Output);
+            if (fmt == "csv" || fmt == "tsv")
+                throw new MieException("csv/tsv hold one table per file; export each table separately.");
+            string listDir = Path.GetDirectoryName(Path.GetFullPath(o.Input));
+            var tables = new List<KeyValuePair<string, Table>>();
+            string[] lines = File.ReadAllLines(o.Input, o.TsvEncoding);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i];
+                if (line.Trim().Length == 0) continue;
+                int tab = line.IndexOf('\t');
+                if (tab < 0) throw new MieException("List file line " + (i + 1) + ": expected <name><TAB><file>, got '" + line + "'.");
+                string name = line.Substring(0, tab).Trim();
+                string file = line.Substring(tab + 1).Trim().Trim('"');
+                if (file.Length == 0) throw new MieException("List file line " + (i + 1) + ": no file given for table '" + name + "'.");
+                if (!Path.IsPathRooted(file)) file = Path.Combine(listDir, file);
+                if (!File.Exists(file)) throw new MieException("Table '" + name + "': file not found: " + file);
+                tables.Add(new KeyValuePair<string, Table>(name, MieTsv.ReadExport(file, o.TsvEncoding)));
+            }
+            if (tables.Count == 0) throw new MieException("The list file names no tables: " + o.Input);
+            string dir = Path.GetDirectoryName(Path.GetFullPath(o.Output));
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            switch (fmt)
+            {
+                case "json": JsonFormat.WriteMulti(o.Output, tables, o); break;
+                case "xml": XmlFormat.WriteMulti(o.Output, tables, o); break;
+                case "xlsx":
+                case "xls":
+                {
+                    var names = ExcelUtil.UniqueSheetNames(tables.Select(t => t.Key).ToList());
+                    var sheets = new List<KeyValuePair<string, Table>>();
+                    for (int i = 0; i < tables.Count; i++) sheets.Add(new KeyValuePair<string, Table>(names[i], tables[i].Value));
+                    if (fmt == "xlsx") XlsxFormat.WriteBook(o.Output, sheets, o);
+                    else
+                    {
+                        // keep the original table names for error messages
+                        try { XlsFormat.WriteBook(o.Output, sheets, o, true); }
+                        catch (MieException ex)
+                        {
+                            for (int i = 0; i < tables.Count; i++)
+                                if (names[i] != tables[i].Key && ex.Message.StartsWith("Table '" + names[i] + "'", StringComparison.Ordinal))
+                                    throw new MieException("Table '" + tables[i].Key + "'" + ex.Message.Substring(("Table '" + names[i] + "'").Length));
+                            throw;
+                        }
+                    }
+                    break;
+                }
+                default: throw new MieException("Unsupported format " + fmt);
+            }
         }
 
         static void RunExport(Options o)

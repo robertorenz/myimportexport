@@ -31,6 +31,8 @@ MyImportExportClass.Construct PROCEDURE
   SELF.Columns &= NEW MIE_ColumnQueue
   SELF.Sheets  &= NEW MIE_SheetQueue
   SELF.Values  &= NEW MIE_ValueQueue
+  SELF.Tables  &= NEW MIE_TableQueue
+  SELF.Batch   &= NEW MIE_BatchQueue
   SELF.LineCap  = 4096
   SELF.LineBuf &= NEW STRING(SELF.LineCap)
   SELF.Mode       = MIE:Mode:Export
@@ -44,9 +46,12 @@ MyImportExportClass.Construct PROCEDURE
 MyImportExportClass.Destruct PROCEDURE
   CODE
   SELF.CloseIO()
+  SELF.BatchCancel()
   SELF.ClearFields()
   SELF.FreeValues()
   DISPOSE(SELF.Fields)
+  DISPOSE(SELF.Tables)
+  DISPOSE(SELF.Batch)
   DISPOSE(SELF.Columns)
   DISPOSE(SELF.Sheets)
   DISPOSE(SELF.Values)
@@ -65,6 +70,8 @@ MyImportExportClass.Kill PROCEDURE
   SELF.FreeValues()
   FREE(SELF.Columns)
   FREE(SELF.Sheets)
+  SELF.BatchCancel()
+  FREE(SELF.Tables)
 
 MyImportExportClass.ResetCounters PROCEDURE
   CODE
@@ -320,36 +327,52 @@ C                      LONG
 !----------------------------------------------------------------------------
 MyImportExportClass.Export PROCEDURE
 Tmp                    CSTRING(261)
-I                      LONG
-Cnt                    LONG
-Total                  LONG
-First                  BYTE
-Sel                    LONG
 RC                     BYTE
   CODE
+  SELF.BatchCancel()
   SELF.ResetCounters()
   SELF.Mode = MIE:Mode:Export
-  IF SELF.TableFile &= NULL
-    SELF.ErrorText = 'No table was set.'
-    RETURN 1
-  END
   IF SELF.FileName = ''
     SELF.ErrorText = 'Please choose the file to export to.'
     RETURN 1
   END
   IF SELF.Format = '' THEN SELF.Format = SELF.FormatFromFileName(SELF.FileName).
   IF SELF.Format = '' THEN SELF.Format = 'CSV'.
+  Tmp = SELF.TempName('tsv')
+  IF SELF.ExportTsv(Tmp)
+    REMOVE(Tmp)
+    RETURN 1
+  END
+  RC = SELF.RunHelper('export ' & SELF.Quote(Tmp) & ' ' & SELF.Quote(SELF.FileName) & SELF.CommonArgs())
+  REMOVE(Tmp)
+  RETURN RC
+
+!----------------------------------------------------------------------------
+! ExportTsv - the current table's selected fields -> intermediate file.
+! Adds to Processed / Skipped; does not reset them (a batch sums them).
+!----------------------------------------------------------------------------
+MyImportExportClass.ExportTsv PROCEDURE(STRING pTsvFile)
+I                      LONG
+Cnt                    LONG
+Total                  LONG
+First                  BYTE
+Sel                    LONG
+  CODE
+  SELF.Mode = MIE:Mode:Export
+  IF SELF.TableFile &= NULL
+    SELF.ErrorText = 'No table was set.'
+    RETURN 1
+  END
   SORT(SELF.Fields,SELF.Fields.Order)
   LOOP I = 1 TO RECORDS(SELF.Fields)
     GET(SELF.Fields,I)
     IF SELF.Fields.Selected THEN Sel += 1.
   END
   IF Sel = 0
-    SELF.ErrorText = 'Please select at least one field to export.'
+    SELF.ErrorText = 'Please select at least one field of ' & CLIP(SELF.TableName) & ' to export.'
     RETURN 1
   END
-  Tmp = SELF.TempName('tsv')
-  IF SELF.OpenWrite(Tmp) THEN RETURN 1.
+  IF SELF.OpenWrite(pTsvFile) THEN RETURN 1.
   First = 1                                  ! header line
   LOOP I = 1 TO RECORDS(SELF.Fields)
     GET(SELF.Fields,I)
@@ -370,7 +393,6 @@ RC                     BYTE
   SELF.WriteText('<13,10>')
   IF SELF.OpenTable()
     SELF.CloseIO()
-    REMOVE(Tmp)
     RETURN 1
   END
   Total = RECORDS(SELF.TableFile)
@@ -402,10 +424,8 @@ RC                     BYTE
   END
   SELF.CloseTable()
   SELF.CloseIO()
-  RC = SELF.RunHelper('export ' & SELF.Quote(Tmp) & ' ' & SELF.Quote(SELF.FileName) & SELF.CommonArgs())
-  REMOVE(Tmp)
   SELF.TakeProgress(Total,Total)
-  RETURN RC
+  RETURN 0
 
 !----------------------------------------------------------------------------
 ! Import
@@ -1061,9 +1081,25 @@ P3                     LONG
   END
 
 MyImportExportClass.ResultText PROCEDURE
-T                      CSTRING(2048)
+T                      CSTRING(4096)
+I                      LONG
   CODE
-  IF SELF.Mode = MIE:Mode:Export
+  IF SELF.Mode = MIE:Mode:Export AND RECORDS(SELF.Batch)
+    IF SELF.IsMultiFormat()
+      T = 'Exported ' & RECORDS(SELF.Batch) & ' table(s) to<13,10>' & SELF.FileName & '<13,10>'
+    ELSE
+      T = 'Exported ' & RECORDS(SELF.Batch) & ' table(s), one file each, next to<13,10>' & SELF.FileName & '<13,10>'
+    END
+    LOOP I = 1 TO RECORDS(SELF.Batch)
+      GET(SELF.Batch,I)
+      IF I > 25
+        T = T & '<13,10>... and ' & RECORDS(SELF.Batch) - 25 & ' more'
+        BREAK
+      END
+      T = T & '<13,10>' & CLIP(SELF.Batch.Name) & ': ' & SELF.Batch.Records & ' record(s)'
+    END
+    IF SELF.Skipped THEN T = T & '<13,10><13,10>Filtered out: ' & SELF.Skipped.
+  ELSIF SELF.Mode = MIE:Mode:Export
     T = 'Exported ' & SELF.Processed & ' record(s) from ' & CLIP(SELF.TableName) & ' to<13,10>' & SELF.FileName
     IF SELF.Skipped THEN T = T & '<13,10><13,10>Filtered out: ' & SELF.Skipped.
   ELSE
@@ -1075,6 +1111,449 @@ T                      CSTRING(2048)
     IF SELF.LastFailure <> '' THEN T = T & '<13,10><13,10>Last error: ' & SELF.LastFailure.
   END
   RETURN T
+
+!----------------------------------------------------------------------------
+! Several tables in one file
+!   JSON  one collection per table   {"Customer":[...],"Product":[...]}
+!   XML   one element per table      <Data><Customer><Row>..</Row></Customer>..</Data>
+!   XLSX / XLS  one sheet per table, named after the table
+!   CSV / TSV   one file per table:  <name>_<Table>.csv
+!----------------------------------------------------------------------------
+MyImportExportClass.AddTable PROCEDURE(STRING pName,<STRING pDescription>)
+  CODE
+  CLEAR(SELF.Tables)
+  SELF.Tables.Name = pName
+  IF NOT OMITTED(pDescription) THEN SELF.Tables.Description = pDescription.
+  SELF.Tables.Selected = 0
+  ADD(SELF.Tables)
+
+MyImportExportClass.IsMultiFormat PROCEDURE(<STRING pFormat>)
+F                      CSTRING(9)
+  CODE
+  IF OMITTED(pFormat)
+    F = UPPER(CLIP(SELF.Format))
+  ELSE
+    F = UPPER(CLIP(pFormat))
+  END
+  RETURN CHOOSE(INLIST(F,'JSON','XML','XLSX','XLS') > 0,1,0)
+
+MyImportExportClass.BatchFileName PROCEDURE(STRING pName)
+F                      CSTRING(261)
+I                      LONG
+  CODE
+  F = CLIP(SELF.FileName)
+  LOOP I = LEN(F) TO 1 BY -1
+    CASE F[I]
+    OF '.'
+      RETURN SUB(F,1,I-1) & '_' & CLIP(pName) & SUB(F,I,LEN(F)-I+1)
+    OF '\'
+    OROF '/'
+      BREAK
+    END
+  END
+  RETURN F & '_' & CLIP(pName) & '.' & LOWER(CLIP(SELF.Format))
+
+MyImportExportClass.BatchBegin PROCEDURE
+  CODE
+  SELF.BatchCancel()
+  SELF.ResetCounters()
+  SELF.Mode = MIE:Mode:Export
+
+MyImportExportClass.BatchCancel PROCEDURE
+I                      LONG
+  CODE
+  LOOP I = 1 TO RECORDS(SELF.Batch)
+    GET(SELF.Batch,I)
+    IF SELF.Batch.TsvFile <> '' THEN REMOVE(SELF.Batch.TsvFile).
+  END
+  FREE(SELF.Batch)
+
+MyImportExportClass.BatchAdd PROCEDURE(STRING pName)
+Tmp                    CSTRING(261)
+Before                 LONG
+  CODE
+  Tmp = SELF.TempName('tsv')
+  Before = SELF.Processed
+  IF SELF.ExportTsv(Tmp)
+    REMOVE(Tmp)
+    RETURN 1
+  END
+  CLEAR(SELF.Batch)
+  SELF.Batch.Name    = pName
+  SELF.Batch.TsvFile = Tmp
+  SELF.Batch.Records = SELF.Processed - Before
+  ADD(SELF.Batch)
+  RETURN 0
+
+MyImportExportClass.BatchFinish PROCEDURE
+ListName               CSTRING(261)
+Args                   CSTRING(1024)
+F                      CSTRING(9)
+I                      LONG
+RC                     BYTE
+  CODE
+  IF RECORDS(SELF.Batch) = 0
+    SELF.ErrorText = 'No tables were exported.'
+    RETURN 1
+  END
+  IF SELF.FileName = ''
+    SELF.ErrorText = 'Please choose the file to export to.'
+    SELF.BatchCancel()
+    RETURN 1
+  END
+  IF SELF.Format = '' THEN SELF.Format = SELF.FormatFromFileName(SELF.FileName).
+  IF SELF.Format = '' THEN SELF.Format = 'XLSX'.
+  F = LOWER(CLIP(SELF.Format))
+  IF SELF.IsMultiFormat()
+    ListName = SELF.TempName('txt')
+    IF SELF.OpenWrite(ListName)
+      SELF.BatchCancel()
+      RETURN 1
+    END
+    LOOP I = 1 TO RECORDS(SELF.Batch)
+      GET(SELF.Batch,I)
+      SELF.WriteText(CLIP(SELF.Batch.Name) & '<9>' & SELF.Batch.TsvFile & '<13,10>')
+    END
+    SELF.CloseIO()
+    Args = ' --format ' & F
+    IF F = 'xml' AND SELF.XmlRoot <> '' THEN Args = Args & ' --root ' & SELF.Quote(SELF.XmlRoot).
+    IF F = 'xml' AND SELF.XmlRow <> '' THEN Args = Args & ' --row ' & SELF.Quote(SELF.XmlRow).
+    IF INLIST(F,'json','xml') AND SELF.Encoding <> '' THEN Args = Args & ' --encoding ' & SELF.Encoding.
+    IF INLIST(F,'xls','xlsx') AND NOT SELF.HasHeader THEN Args = Args & ' --noheader'.
+    RC = SELF.RunHelper('exportmulti ' & SELF.Quote(ListName) & ' ' & SELF.Quote(SELF.FileName) & Args)
+    REMOVE(ListName)
+  ELSE                                          ! CSV / TSV: one file per table
+    LOOP I = 1 TO RECORDS(SELF.Batch)
+      GET(SELF.Batch,I)
+      RC = SELF.RunHelper('export ' & SELF.Quote(SELF.Batch.TsvFile) & ' ' & |
+                          SELF.Quote(SELF.BatchFileName(SELF.Batch.Name)) & SELF.CommonArgs())
+      IF RC
+        SELF.ErrorText = CLIP(SELF.Batch.Name) & ': ' & SELF.ErrorText
+        BREAK
+      END
+    END
+  END
+  LOOP I = 1 TO RECORDS(SELF.Batch)            ! keep names and counts for ResultText
+    GET(SELF.Batch,I)
+    REMOVE(SELF.Batch.TsvFile)
+    SELF.Batch.TsvFile = ''
+    PUT(SELF.Batch)
+  END
+  RETURN RC
+
+MyImportExportClass.ExportTables PROCEDURE
+SaveFormat             STRING(8)
+SaveFile               CSTRING(261)
+SavePictures           BYTE
+SaveHeader             BYTE
+SaveDelimiter          CSTRING(6)
+SaveEncoding           CSTRING(16)
+SaveRoot               CSTRING(65)
+SaveRow                CSTRING(65)
+TName                  STRING(100)
+I                      LONG
+Sel                    LONG
+RC                     BYTE
+  CODE
+  IF SELF.FileName = ''
+    SELF.ErrorText = 'Please choose the file to export to.'
+    RETURN 1
+  END
+  IF SELF.Format = '' THEN SELF.Format = SELF.FormatFromFileName(SELF.FileName).
+  IF SELF.Format = '' THEN SELF.Format = 'XLSX'.
+  LOOP I = 1 TO RECORDS(SELF.Tables)
+    GET(SELF.Tables,I)
+    IF SELF.Tables.Selected THEN Sel += 1.
+  END
+  IF Sel = 0
+    SELF.ErrorText = 'Please select at least one table to export.'
+    RETURN 1
+  END
+  SaveFormat    = SELF.Format                ! LoadMap restores each table's own settings,
+  SaveFile      = SELF.FileName              ! so the batch settings are put back after it
+  SavePictures  = SELF.UsePictures
+  SaveHeader    = SELF.HasHeader
+  SaveDelimiter = SELF.Delimiter
+  SaveEncoding  = SELF.Encoding
+  SaveRoot      = SELF.XmlRoot
+  SaveRow       = SELF.XmlRow
+  SELF.BatchBegin()
+  LOOP I = 1 TO RECORDS(SELF.Tables)
+    GET(SELF.Tables,I)
+    IF NOT SELF.Tables.Selected THEN CYCLE.
+    TName = SELF.Tables.Name
+    IF SELF.StatusControl THEN SELF.StatusControl{PROP:Text} = 'Exporting ' & CLIP(TName) & ' ...'.
+    IF SELF.SetupTable(TName)
+      SELF.ErrorText = 'The table ' & CLIP(TName) & ' is not available for export.'
+      RC = 1
+      BREAK
+    END
+    SELF.LoadMap()
+    DO RestoreSettings
+    IF SELF.BatchAdd(TName)
+      SELF.ErrorText = CLIP(TName) & ': ' & SELF.ErrorText
+      RC = 1
+      BREAK
+    END
+  END
+  IF RC
+    SELF.BatchCancel()
+  ELSE
+    IF SELF.StatusControl THEN SELF.StatusControl{PROP:Text} = 'Writing ' & SELF.FileName & ' ...'.
+    RC = SELF.BatchFinish()
+  END
+  DO RestoreSettings
+  RETURN RC
+
+RestoreSettings ROUTINE
+  SELF.Mode        = MIE:Mode:Export
+  SELF.Format      = SaveFormat
+  SELF.FileName    = SaveFile
+  SELF.UsePictures = SavePictures
+  SELF.HasHeader   = SaveHeader
+  SELF.Delimiter   = SaveDelimiter
+  SELF.Encoding    = SaveEncoding
+  SELF.XmlRoot     = SaveRoot
+  SELF.XmlRow      = SaveRow
+
+MyImportExportClass.SaveTablesMap PROCEDURE
+Sec                    CSTRING(40)
+L                      CSTRING(8192)
+I                      LONG
+  CODE
+  IF SELF.IniFile = '' THEN RETURN.
+  Sec = 'MIE__Tables'
+  PUTINI(Sec,'Format',SELF.Format,SELF.IniFile)
+  PUTINI(Sec,'FileName',SELF.FileName,SELF.IniFile)
+  PUTINI(Sec,'UsePictures',SELF.UsePictures,SELF.IniFile)
+  LOOP I = 1 TO RECORDS(SELF.Tables)
+    GET(SELF.Tables,I)
+    IF NOT SELF.Tables.Selected THEN CYCLE.
+    IF LEN(L) + LEN(CLIP(SELF.Tables.Name)) + 2 > SIZE(L) - 1 THEN BREAK.
+    L = L & CHOOSE(L = '','',',') & CLIP(SELF.Tables.Name)
+  END
+  PUTINI(Sec,'Selected',L,SELF.IniFile)
+
+MyImportExportClass.LoadTablesMap PROCEDURE
+Sec                    CSTRING(40)
+L                      CSTRING(8192)
+I                      LONG
+  CODE
+  IF SELF.IniFile = '' THEN RETURN.
+  Sec = 'MIE__Tables'
+  IF GETINI(Sec,'Format','',SELF.IniFile) = '' THEN RETURN.
+  SELF.Format      = GETINI(Sec,'Format',SELF.Format,SELF.IniFile)
+  SELF.FileName    = GETINI(Sec,'FileName',SELF.FileName,SELF.IniFile)
+  SELF.UsePictures = GETINI(Sec,'UsePictures',SELF.UsePictures,SELF.IniFile)
+  L = ',' & UPPER(GETINI(Sec,'Selected','',SELF.IniFile)) & ','
+  LOOP I = 1 TO RECORDS(SELF.Tables)
+    GET(SELF.Tables,I)
+    SELF.Tables.Selected = CHOOSE(INSTRING(',' & UPPER(CLIP(SELF.Tables.Name)) & ',',L,1,1) > 0,1,0)
+    PUT(SELF.Tables)
+  END
+
+!============================================================================
+! AskTables - the multi-table export window
+!============================================================================
+MyImportExportClass.AskTables PROCEDURE
+LocFormat              STRING(8)
+LocFile                STRING(260)
+LocPictures            BYTE
+Result                 BYTE
+I                      LONG
+C                      LONG
+J                      LONG
+Picked                 STRING(260)
+FileMask               CSTRING(300)
+Ext                    CSTRING(10)
+TabQ                   QUEUE
+UseText                  STRING(1)
+UseIcon                  LONG
+Name                     STRING(100)
+Description              STRING(128)
+                       END
+Window WINDOW('Export tables'),AT(,,424,300),FONT('Segoe UI',9,,FONT:regular),CENTER,GRAY,SYSTEM,DOUBLE
+       BOX,AT(0,0,424,30),USE(?Band),COLOR(05F3A1FH),FILL(05F3A1FH)
+       STRING('Export tables'),AT(10,3),USE(?Title),TRN,FONT(,13,COLOR:White,FONT:bold)
+       STRING('Several tables into one file'),AT(10,18,400,10),USE(?SubTitle),TRN,FONT(,9,0E8D8C8H)
+       PROMPT('Tables:'),AT(8,38),USE(?TablesPrompt)
+       LIST,AT(8,50,330,150),USE(?TableList),VSCROLL,FROM(TabQ),ALRT(MouseLeft2),ALRT(SpaceKey), |
+           FORMAT('20C|I~Use~@s1@100L(2)|~Table~@s100@200L(2)~Description~@s128@')
+       BUTTON('Select &All'),AT(344,50,72,14),USE(?SelectAll)
+       BUTTON('Select &None'),AT(344,68,72,14),USE(?SelectNone)
+       STRING(''),AT(344,90,72,10),USE(?Count),FONT(,8,COLOR:Gray)
+       PROMPT('Format:'),AT(8,212),USE(?FormatPrompt)
+       LIST,AT(52,210,64,12),USE(LocFormat),DROP(6),FROM('XLSX|XLS|JSON|XML|CSV|TSV')
+       STRING(''),AT(124,212,292,10),USE(?FormatNote)
+       PROMPT('File:'),AT(8,230),USE(?FilePrompt)
+       ENTRY(@s255),AT(52,228,342,12),USE(LocFile)
+       BUTTON('...'),AT(398,227,18,14),USE(?BrowseFile),TIP('Choose the file')
+       CHECK('Format with dictionary pictures'),AT(52,246),USE(LocPictures)
+       STRING('Each table uses the columns saved for it in Import / Export.'),AT(8,262,408,10),USE(?Hint),FONT(,8,COLOR:Gray)
+       PROGRESS,AT(8,280,200,8),USE(?Progress),RANGE(0,100)
+       STRING(''),AT(8,290,290,10),USE(?Status)
+       BUTTON('&Export'),AT(306,278,54,16),USE(?Run),DEFAULT
+       BUTTON('&Close'),AT(364,278,52,16),USE(?Close)
+     END
+  CODE
+  LocFormat   = CHOOSE(SELF.Format = '','XLSX',UPPER(SELF.Format))
+  LocFile     = SELF.FileName
+  LocPictures = SELF.UsePictures
+  OPEN(Window)
+  ?TableList{PROP:IconList,1} = ICON:Tick
+  SELF.ProgressControl = ?Progress
+  SELF.StatusControl   = ?Status
+  DO RefreshList
+  DO ShowNote
+  ACCEPT
+    CASE EVENT()
+    OF EVENT:AlertKey
+      IF FIELD() = ?TableList AND INLIST(KEYCODE(),MouseLeft2,SpaceKey)
+        DO ToggleCurrent
+      END
+    OF EVENT:NewSelection
+      IF FIELD() = ?TableList AND KEYCODE() = MouseLeft AND ?TableList{PROPLIST:MouseDownField} = 1
+        DO ToggleCurrent
+      END
+    OF EVENT:Accepted
+      CASE FIELD()
+      OF ?SelectAll
+        LOOP I = 1 TO RECORDS(SELF.Tables)
+          GET(SELF.Tables,I)
+          SELF.Tables.Selected = 1
+          PUT(SELF.Tables)
+        END
+        DO RefreshList
+      OF ?SelectNone
+        LOOP I = 1 TO RECORDS(SELF.Tables)
+          GET(SELF.Tables,I)
+          SELF.Tables.Selected = 0
+          PUT(SELF.Tables)
+        END
+        DO RefreshList
+      OF ?LocFormat
+        DO FixExtension
+        DO ShowNote
+      OF ?LocFile
+        Ext = SELF.FormatFromFileName(LocFile)
+        IF Ext <> ''
+          LocFormat = Ext
+        ELSE
+          DO FixExtension
+        END
+        DO ShowNote
+      OF ?BrowseFile
+        DO PickFile
+      OF ?Run
+        DO RunIt
+      OF ?Close
+        POST(EVENT:CloseWindow)
+      END
+    END
+  END
+  SELF.ProgressControl = 0
+  SELF.StatusControl   = 0
+  CLOSE(Window)
+  RETURN Result
+
+RefreshList ROUTINE
+  C = CHOICE(?TableList)
+  FREE(TabQ)
+  I = 0
+  LOOP J = 1 TO RECORDS(SELF.Tables)
+    GET(SELF.Tables,J)
+    CLEAR(TabQ)
+    TabQ.UseIcon     = CHOOSE(SELF.Tables.Selected = 1,1,0)
+    TabQ.Name        = SELF.Tables.Name
+    TabQ.Description = SELF.Tables.Description
+    ADD(TabQ)
+    IF SELF.Tables.Selected THEN I += 1.
+  END
+  IF C < 1 THEN C = 1.
+  IF C > RECORDS(TabQ) THEN C = RECORDS(TabQ).
+  IF C THEN ?TableList{PROP:Selected} = C.
+  ?Count{PROP:Text} = I & ' of ' & RECORDS(SELF.Tables) & ' selected'
+  DISPLAY
+
+ToggleCurrent ROUTINE
+  I = CHOICE(?TableList)
+  IF I < 1 OR I > RECORDS(SELF.Tables) THEN EXIT.
+  GET(SELF.Tables,I)
+  SELF.Tables.Selected = CHOOSE(SELF.Tables.Selected = 1,0,1)
+  PUT(SELF.Tables)
+  DO RefreshList
+
+ShowNote ROUTINE
+  CASE LocFormat
+  OF 'XLSX'
+  OROF 'XLS'
+    ?FormatNote{PROP:Text} = 'One sheet per table, named after the table.'
+  OF 'JSON'
+    ?FormatNote{PROP:Text} = 'One collection per table, named after the table.'
+  OF 'XML'
+    ?FormatNote{PROP:Text} = 'One element per table inside the root element.'
+  ELSE
+    ?FormatNote{PROP:Text} = 'One file per table: the table name is added to the file name.'
+  END
+
+FixExtension ROUTINE
+  IF LocFile = '' THEN EXIT.
+  Ext = LOWER(CLIP(LocFormat))
+  LOOP I = LEN(CLIP(LocFile)) TO 1 BY -1
+    IF INLIST(LocFile[I],'\','/') THEN BREAK.
+    IF LocFile[I] = '.'
+      LocFile = SUB(LocFile,1,I) & Ext
+      DISPLAY(?LocFile)
+      EXIT
+    END
+  END
+  LocFile = CLIP(LocFile) & '.' & Ext
+  DISPLAY(?LocFile)
+
+PickFile ROUTINE
+  FileMask = 'Excel workbook (*.xlsx)|*.xlsx|Excel 97-2003 (*.xls)|*.xls|JSON files (*.json)|*.json' & |
+             '|XML files (*.xml)|*.xml|CSV files (*.csv)|*.csv|Tab separated (*.tsv)|*.tsv|All files (*.*)|*.*'
+  Picked = LocFile
+  IF NOT FILEDIALOG('Export tables to',Picked,FileMask,FILE:Save + FILE:KeepDir + FILE:LongName) THEN EXIT.
+  LocFile = Picked
+  Ext = SELF.FormatFromFileName(LocFile)
+  IF Ext <> ''
+    LocFormat = Ext
+  ELSE
+    DO FixExtension
+  END
+  DO ShowNote
+  DISPLAY
+
+RunIt ROUTINE
+  SELF.Format      = LocFormat
+  SELF.FileName    = CLIP(LocFile)
+  SELF.UsePictures = LocPictures
+  IF SELF.FileName = ''
+    SELF.ShowMessage('Please choose a file first.','Export tables',ICON:Exclamation)
+    SELECT(?LocFile)
+    EXIT
+  END
+  IF SELF.IsMultiFormat() AND EXISTS(SELF.FileName)
+    IF MESSAGE('The file ' & SELF.FileName & ' already exists.<13,10>Do you want to replace it?', |
+               'Export tables',ICON:Question,BUTTON:Yes + BUTTON:No,BUTTON:No) <> BUTTON:Yes THEN EXIT.
+  END
+  DISABLE(?Run)
+  SETCURSOR(CURSOR:Wait)
+  I = SELF.ExportTables()
+  SETCURSOR()
+  ENABLE(?Run)
+  IF I
+    ?Status{PROP:Text} = 'Failed'
+    SELF.ShowMessage(SELF.ErrorText,'Export tables',ICON:Exclamation)
+  ELSE
+    Result = 1
+    SELF.SaveTablesMap()
+    ?Progress{PROP:Progress} = 100
+    ?Status{PROP:Text} = 'Done'
+    SELF.ShowMessage(SELF.ResultText(),'Export complete')
+    POST(EVENT:CloseWindow)
+  END
 
 !----------------------------------------------------------------------------
 ! Virtual hooks - raw driver defaults
@@ -1163,6 +1642,11 @@ MyImportExportClass.ShowMessage PROCEDURE(STRING pText,STRING pCaption,<STRING p
   ELSE
     MESSAGE(pText,pCaption,pIcon)
   END
+
+MyImportExportClass.SetupTable PROCEDURE(STRING pName)
+  CODE
+  SELF.ErrorText = 'No table setup for ' & CLIP(pName) & ' (derive SetupTable).'
+  RETURN 1
 
 !============================================================================
 ! Ask - the import / export window

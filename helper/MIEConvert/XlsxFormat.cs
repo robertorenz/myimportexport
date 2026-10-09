@@ -419,23 +419,31 @@ namespace MIEConvert
                 ReplaceSheet(path, t, o, sheetName);
                 return;
             }
+            WriteBook(path, new List<KeyValuePair<string, Table>> { new KeyValuePair<string, Table>(sheetName, t) }, o);
+        }
+
+        /// <summary>Writes a new workbook with one worksheet per table (names must already be valid and unique).</summary>
+        public static void WriteBook(string path, List<KeyValuePair<string, Table>> sheets, Options o)
+        {
             string tmp = path + ".mietmp";
             try
             {
                 using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.ReadWrite))
                 using (var zip = new ZipArchive(fs, ZipArchiveMode.Create))
                 {
-                    WriteEntry(zip, "[Content_Types].xml",
-                        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n" +
+                    var ct = new StringBuilder();
+                    ct.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n" +
                         "<Types xmlns=\"" + NsCt + "\">" +
                         "<Default Extension=\"rels\" ContentType=\"" + CtRels + "\"/>" +
                         "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
-                        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"" + CtWorkbook + "\"/>" +
-                        "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"" + CtWorksheet + "\"/>" +
-                        "<Override PartName=\"/xl/styles.xml\" ContentType=\"" + CtStyles + "\"/>" +
+                        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"" + CtWorkbook + "\"/>");
+                    for (int i = 1; i <= sheets.Count; i++)
+                        ct.Append("<Override PartName=\"/xl/worksheets/sheet" + i + ".xml\" ContentType=\"" + CtWorksheet + "\"/>");
+                    ct.Append("<Override PartName=\"/xl/styles.xml\" ContentType=\"" + CtStyles + "\"/>" +
                         "<Override PartName=\"/docProps/core.xml\" ContentType=\"application/vnd.openxmlformats-package.core-properties+xml\"/>" +
                         "<Override PartName=\"/docProps/app.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.extended-properties+xml\"/>" +
                         "</Types>");
+                    WriteEntry(zip, "[Content_Types].xml", ct.ToString());
                     WriteEntry(zip, "_rels/.rels",
                         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n" +
                         "<Relationships xmlns=\"" + NsPkgRel + "\">" +
@@ -454,23 +462,28 @@ namespace MIEConvert
                     WriteEntry(zip, "docProps/app.xml",
                         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n" +
                         "<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\"><Application>Microsoft Excel</Application></Properties>");
-                    WriteEntry(zip, "xl/_rels/workbook.xml.rels",
-                        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n" +
-                        "<Relationships xmlns=\"" + NsPkgRel + "\">" +
-                        "<Relationship Id=\"rId1\" Type=\"" + RelWorksheet + "\" Target=\"worksheets/sheet1.xml\"/>" +
-                        "<Relationship Id=\"rId2\" Type=\"" + RelStyles + "\" Target=\"styles.xml\"/>" +
-                        "</Relationships>");
-                    WriteEntry(zip, "xl/workbook.xml",
-                        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n" +
+                    var rels = new StringBuilder();
+                    rels.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<Relationships xmlns=\"" + NsPkgRel + "\">");
+                    for (int i = 1; i <= sheets.Count; i++)
+                        rels.Append("<Relationship Id=\"rId" + i + "\" Type=\"" + RelWorksheet + "\" Target=\"worksheets/sheet" + i + ".xml\"/>");
+                    rels.Append("<Relationship Id=\"rId" + (sheets.Count + 1) + "\" Type=\"" + RelStyles + "\" Target=\"styles.xml\"/></Relationships>");
+                    WriteEntry(zip, "xl/_rels/workbook.xml.rels", rels.ToString());
+                    var wb = new StringBuilder();
+                    wb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n" +
                         "<workbook xmlns=\"" + NsMain + "\" xmlns:r=\"" + NsRel + "\">" +
                         "<workbookPr/>" +
-                        "<bookViews><workbookView xWindow=\"0\" yWindow=\"0\" windowWidth=\"16384\" windowHeight=\"8192\"/></bookViews>" +
-                        "<sheets><sheet name=\"" + SecurityElementEscape(sheetName) + "\" sheetId=\"1\" r:id=\"rId1\"/></sheets>" +
-                        "</workbook>");
+                        "<bookViews><workbookView xWindow=\"0\" yWindow=\"0\" windowWidth=\"16384\" windowHeight=\"8192\"/></bookViews><sheets>");
+                    for (int i = 1; i <= sheets.Count; i++)
+                        wb.Append("<sheet name=\"" + SecurityElementEscape(sheets[i - 1].Key) + "\" sheetId=\"" + i + "\" r:id=\"rId" + i + "\"/>");
+                    wb.Append("</sheets></workbook>");
+                    WriteEntry(zip, "xl/workbook.xml", wb.ToString());
                     WriteEntry(zip, "xl/styles.xml", DefaultStyles());
-                    var ze = zip.CreateEntry("xl/worksheets/sheet1.xml", CompressionLevel.Optimal);
-                    using (var s = ze.Open())
-                        WriteSheet(s, t, o, new StyleIds { Date = 1, Time = 2, Header = 3 });
+                    for (int i = 1; i <= sheets.Count; i++)
+                    {
+                        var ze = zip.CreateEntry("xl/worksheets/sheet" + i + ".xml", CompressionLevel.Optimal);
+                        using (var s = ze.Open())
+                            WriteSheet(s, sheets[i - 1].Value, o, new StyleIds { Date = 1, Time = 2, Header = 3 });
+                    }
                 }
                 if (File.Exists(path)) File.Delete(path);
                 File.Move(tmp, path);

@@ -65,7 +65,7 @@
 #!----------------------------------------------------------------------------
 #! Walk the fields of the current %File.
 #!   %pEmit = 0 : only count the usable fields (returned)
-#!   %pEmit = 1 : emit one ThisMIE.AddField(...) per usable field / element
+#!   %pEmit = 1 : emit one SELF.AddField(...) per usable field / element
 #! Skipped: END markers, GROUPs (their children are used, unless the GROUP
 #! is OVER()'d, DIM()'d or MIEEXCLUDE'd), MEMO, BLOB, OVER() fields, and
 #! fields whose User Options contain MIEEXCLUDE.
@@ -143,7 +143,7 @@
         #LOOP,FOR(%MIEI2,1,%FieldDimension2)
           #LOOP,FOR(%MIEI3,1,%FieldDimension3)
             #LOOP,FOR(%MIEI4,1,%FieldDimension4)
-    ThisMIE.AddField('%Field[%MIEI1,%MIEI2,%MIEI3,%MIEI4]','%(%MIECol & '_' & %MIEI1 & '_' & %MIEI2 & '_' & %MIEI3 & '_' & %MIEI4)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1,%MIEI2,%MIEI3,%MIEI4],%MIEIsKey)
+    SELF.AddField('%Field[%MIEI1,%MIEI2,%MIEI3,%MIEI4]','%(%MIECol & '_' & %MIEI1 & '_' & %MIEI2 & '_' & %MIEI3 & '_' & %MIEI4)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1,%MIEI2,%MIEI3,%MIEI4],%MIEIsKey)
             #ENDLOOP
           #ENDLOOP
         #ENDLOOP
@@ -152,22 +152,22 @@
       #LOOP,FOR(%MIEI1,1,%FieldDimension1)
         #LOOP,FOR(%MIEI2,1,%FieldDimension2)
           #LOOP,FOR(%MIEI3,1,%FieldDimension3)
-    ThisMIE.AddField('%Field[%MIEI1,%MIEI2,%MIEI3]','%(%MIECol & '_' & %MIEI1 & '_' & %MIEI2 & '_' & %MIEI3)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1,%MIEI2,%MIEI3],%MIEIsKey)
+    SELF.AddField('%Field[%MIEI1,%MIEI2,%MIEI3]','%(%MIECol & '_' & %MIEI1 & '_' & %MIEI2 & '_' & %MIEI3)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1,%MIEI2,%MIEI3],%MIEIsKey)
           #ENDLOOP
         #ENDLOOP
       #ENDLOOP
     #ELSIF(%FieldDimension2 > 0)
       #LOOP,FOR(%MIEI1,1,%FieldDimension1)
         #LOOP,FOR(%MIEI2,1,%FieldDimension2)
-    ThisMIE.AddField('%Field[%MIEI1,%MIEI2]','%(%MIECol & '_' & %MIEI1 & '_' & %MIEI2)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1,%MIEI2],%MIEIsKey)
+    SELF.AddField('%Field[%MIEI1,%MIEI2]','%(%MIECol & '_' & %MIEI1 & '_' & %MIEI2)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1,%MIEI2],%MIEIsKey)
         #ENDLOOP
       #ENDLOOP
     #ELSIF(%FieldDimension1 > 0)
       #LOOP,FOR(%MIEI1,1,%FieldDimension1)
-    ThisMIE.AddField('%Field[%MIEI1]','%(%MIECol & '_' & %MIEI1)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1],%MIEIsKey)
+    SELF.AddField('%Field[%MIEI1]','%(%MIECol & '_' & %MIEI1)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1],%MIEIsKey)
       #ENDLOOP
     #ELSE
-    ThisMIE.AddField('%Field','%MIECol','%MIEType','%(QUOTE(%MIEPic))',%Field,%MIEIsKey)
+    SELF.AddField('%Field','%MIECol','%MIEType','%(QUOTE(%MIEPic))',%Field,%MIEIsKey)
     #ENDIF
   #ENDIF
 #ENDFOR
@@ -297,32 +297,20 @@ DO RefreshWindow
   END
 
 !----------------------------------------------------------------------------
-! MIE_ImportExport(pTable, pMode)
-!   pTable : dictionary table label; blank = the user picks a table
-!   pMode  : 0 = ask, MIE:Mode:Export or MIE:Mode:Import
-!   returns: 1 = something was imported / exported, 0 = cancelled / failed
+! MIE_DictClass - MyImportExportClass bound to this application's dictionary.
+!   SetupTable(name) registers a table (SetTable + AddField) by its label;
+!   the hooks route every table through its ABC FileManager / RelationManager.
+!   Used by MIE_ImportExport and MIE_ExportTables.
 !----------------------------------------------------------------------------
-MIE_ImportExport     PROCEDURE(STRING pTable,BYTE pMode)
-TableName            STRING(100)
-Result               BYTE
-ExeDir               CSTRING(261)
-Pos                  LONG
-PickRow              LONG
-PickQueue            QUEUE
-TableLabel             STRING(64)
-TableDesc              STRING(128)
-                     END
-PickWindow           WINDOW('Import / Export - choose a table'),AT(,,300,196),FONT('Segoe UI',9),CENTER,GRAY,SYSTEM,DOUBLE
-                       PROMPT('Choose the table to import into or export from:'),AT(6,6,288,10),USE(?PickPrompt)
-                       LIST,AT(6,18,288,152),USE(?PickList),VSCROLL,FROM(PickQueue),FORMAT('90L(2)|M~Table~@s64@200L(2)~Description~@s128@')
-                       BUTTON('&OK'),AT(190,176,50,14),USE(?PickOK),DEFAULT
-                       BUTTON('Cancel'),AT(244,176,50,14),USE(?PickCancel)
-                     END
-ThisMIE              CLASS(MyImportExportClass)
+MIE_DictClass        CLASS(MyImportExportClass),TYPE
 #IF(%MIEIsABC)
 FM                     &FileManager
 RM                     &RelationManager
 FMOpens                LONG
+#ENDIF
+Prepare                PROCEDURE
+SetupTable             PROCEDURE(STRING pName),BYTE,DERIVED
+#IF(%MIEIsABC)
 OpenTable              PROCEDURE(),BYTE,DERIVED
 CloseTable             PROCEDURE(),DERIVED
 PrimeRecord            PROCEDURE(),DERIVED
@@ -335,6 +323,28 @@ DeleteRecord           PROCEDURE(),BYTE,DERIVED
 ValidateRecord         PROCEDURE(),BYTE,DERIVED
 ExportFilter           PROCEDURE(),BYTE,DERIVED
                      END
+
+!----------------------------------------------------------------------------
+! MIE_ImportExport(pTable, pMode)
+!   pTable : dictionary table label; blank = the user picks a table
+!   pMode  : 0 = ask, MIE:Mode:Export or MIE:Mode:Import
+!   returns: 1 = something was imported / exported, 0 = cancelled / failed
+!----------------------------------------------------------------------------
+MIE_ImportExport     PROCEDURE(STRING pTable,BYTE pMode)
+TableName            STRING(100)
+Result               BYTE
+PickRow              LONG
+PickQueue            QUEUE
+TableLabel             STRING(64)
+TableDesc              STRING(128)
+                     END
+PickWindow           WINDOW('Import / Export - choose a table'),AT(,,300,196),FONT('Segoe UI',9),CENTER,GRAY,SYSTEM,DOUBLE
+                       PROMPT('Choose the table to import into or export from:'),AT(6,6,288,10),USE(?PickPrompt)
+                       LIST,AT(6,18,288,152),USE(?PickList),VSCROLL,FROM(PickQueue),FORMAT('90L(2)|M~Table~@s64@200L(2)~Description~@s128@')
+                       BUTTON('&OK'),AT(190,176,50,14),USE(?PickOK),DEFAULT
+                       BUTTON('Cancel'),AT(244,176,50,14),USE(?PickCancel)
+                     END
+ThisMIE              MIE_DictClass
 #EMBED(%MIEProcData,'MIE_ImportExport - local data'),DATA,TREE('MyImportExport|MIE_ImportExport procedure|0 - Local data')
   CODE
   #EMBED(%MIEProcStart,'MIE_ImportExport - start (pTable / pMode may be changed here)'),TREE('MyImportExport|MIE_ImportExport procedure|1 - Start of procedure')
@@ -346,47 +356,8 @@ ExportFilter           PROCEDURE(),BYTE,DERIVED
       RETURN 0
     END
   END
-  ThisMIE.Init()
-  ThisMIE.HelperPath = %(%MIEValueExpr(%MIEHelper))
-  IF ThisMIE.HelperPath <> '' AND ~INSTRING(':',ThisMIE.HelperPath,1,1) AND SUB(ThisMIE.HelperPath,1,1) <> '\'
-    ExeDir = COMMAND('0')                       ! the program, to find the helper beside it
-    LOOP Pos = LEN(ExeDir) TO 1 BY -1
-      IF ExeDir[Pos] = '\' THEN BREAK.
-    END
-    IF Pos > 1
-      ExeDir = SUB(ExeDir,1,Pos-1)
-    ELSE
-      ExeDir = PATH()
-    END
-    ThisMIE.HelperPath = ExeDir & '\' & ThisMIE.HelperPath
-  END
-#IF(%MIEIniFile)
-  ThisMIE.IniFile = %(%MIEValueExpr(%MIEIniFile))
-#ELSIF(%MIEIsABC)
-  ThisMIE.IniFile = INIMgr.FileName
-#ENDIF
-  ThisMIE.Format = '%MIEFormat'
-#IF(%MIEUsePictures)
-  ThisMIE.UsePictures = 1
-#ELSE
-  ThisMIE.UsePictures = 0
-#ENDIF
-  CASE UPPER(TableName)
-#FOR(%MIETables)
-  #FIX(%File,%MIETables)
-  OF '%(UPPER(%File))'                                          ! %FileDescription
-  #IF(%MIEIsABC)
-    ThisMIE.FM &= Access:%File
-    ThisMIE.RM &= Relate:%File
-  #ENDIF
-  #IF(%FilePrimaryKey)
-    ThisMIE.SetTable(%File,'%File',%FilePrimaryKey)
-  #ELSE
-    ThisMIE.SetTable(%File,'%File')
-  #ENDIF
-#INSERT(%MIEFieldLoop,1)
-#ENDFOR
-  ELSE
+  ThisMIE.Prepare()
+  IF ThisMIE.SetupTable(TableName) <> 0
     ThisMIE.ShowMessage('MyImportExport: the table "' & CLIP(TableName) & '" is not available for import / export.','Import / Export')
     ThisMIE.Kill()
     RETURN 0
@@ -443,14 +414,110 @@ PickTable            ROUTINE
     END
   END
   CLOSE(PickWindow)
+
+!----------------------------------------------------------------------------
+! MIE_ExportTables(pTables)
+!   pTables : optional comma-separated table labels to pre-select
+!             (omitted / blank = the selection saved last time)
+!   returns : 1 = exported, 0 = cancelled / failed
+!   JSON / XML / XLSX / XLS write every table into one file; CSV / TSV
+!   write one file per table.
+!----------------------------------------------------------------------------
+MIE_ExportTables     PROCEDURE(<STRING pTables>)
+Result               BYTE
+Want                 CSTRING(4096)
+Pos                  LONG
+ThisMIE              MIE_DictClass
+#EMBED(%MIETablesData,'MIE_ExportTables - local data'),DATA,TREE('MyImportExport|MIE_ExportTables procedure|0 - Local data')
+  CODE
+  #EMBED(%MIETablesStart,'MIE_ExportTables - start of procedure'),TREE('MyImportExport|MIE_ExportTables procedure|1 - Start of procedure')
+  Result = 0
+  ThisMIE.Prepare()
+#FOR(%MIETables)
+  #FIX(%File,%MIETables)
+  ThisMIE.AddTable('%File','%(QUOTE(%FileDescription))')
+#ENDFOR
+  ThisMIE.LoadTablesMap()
+  IF NOT OMITTED(pTables)
+    IF CLIP(pTables) <> ''
+      Want = ','
+      LOOP Pos = 1 TO LEN(CLIP(pTables))
+        IF pTables[Pos] <> ' ' THEN Want = Want & UPPER(pTables[Pos]).
+      END
+      Want = Want & ','
+      LOOP Pos = 1 TO RECORDS(ThisMIE.Tables)
+        GET(ThisMIE.Tables,Pos)
+        IF INSTRING(',' & UPPER(CLIP(ThisMIE.Tables.Name)) & ',',Want,1,1)
+          ThisMIE.Tables.Selected = 1
+        ELSE
+          ThisMIE.Tables.Selected = 0
+        END
+        PUT(ThisMIE.Tables)
+      END
+    END
+  END
+  #EMBED(%MIEBeforeAskTables,'MIE_ExportTables - before AskTables (tables added, selection loaded)'),TREE('MyImportExport|MIE_ExportTables procedure|2 - Before AskTables')
+  Result = ThisMIE.AskTables()
+  #EMBED(%MIEAfterAskTables,'MIE_ExportTables - after AskTables (Result = 1 when exported)'),TREE('MyImportExport|MIE_ExportTables procedure|3 - After AskTables')
+  ThisMIE.Kill()
+  RETURN Result
+
+!============================================================================
+! MIE_DictClass methods
+!============================================================================
+MIE_DictClass.Prepare PROCEDURE
+  CODE
+  SELF.Init()
+  SELF.HelperPath = %(%MIEValueExpr(%MIEHelper))
+  IF SELF.HelperPath <> '' AND ~INSTRING(':',SELF.HelperPath,1,1) AND SUB(SELF.HelperPath,1,1) <> '\'
+    SELF.HelperPath = SELF.ExeFolder() & SELF.HelperPath      ! a bare name: beside the program
+  END
+#IF(%MIEIniFile)
+  SELF.IniFile = %(%MIEValueExpr(%MIEIniFile))
+#ELSIF(%MIEIsABC)
+  SELF.IniFile = INIMgr.FileName
+#ENDIF
+  SELF.Format = '%MIEFormat'
+#IF(%MIEUsePictures)
+  SELF.UsePictures = 1
+#ELSE
+  SELF.UsePictures = 0
+#ENDIF
+  #EMBED(%MIEPrepare,'Prepare - defaults set (helper, INI, format)'),TREE('MyImportExport|Hooks|Prepare (defaults)')
+
+!----------------------------------------------------------------------------
+! SetupTable: SetTable + AddField for one table by its label. 0 = known table
+!----------------------------------------------------------------------------
+MIE_DictClass.SetupTable PROCEDURE(STRING pName)
+  CODE
+  CASE UPPER(pName)
+#FOR(%MIETables)
+  #FIX(%File,%MIETables)
+  OF '%(UPPER(%File))'                                          ! %FileDescription
+  #IF(%MIEIsABC)
+    SELF.FM &= Access:%File
+    SELF.RM &= Relate:%File
+  #ENDIF
+  #IF(%FilePrimaryKey)
+    SELF.SetTable(%File,'%File',%FilePrimaryKey)
+  #ELSE
+    SELF.SetTable(%File,'%File')
+  #ENDIF
+#INSERT(%MIEFieldLoop,1)
+#ENDFOR
+  ELSE
+    RETURN PARENT.SetupTable(pName)
+  END
+  #EMBED(%MIESetupTable,'SetupTable - table and fields registered (SELF.TableName)'),TREE('MyImportExport|Hooks|SetupTable')
+  RETURN 0
 #IF(%MIEIsABC)
 
 !----------------------------------------------------------------------------
 ! ABC hooks: every table goes through its FileManager / RelationManager
-! (FM / RM are set per table in MIE_ImportExport, so no CASE is needed here).
+! (FM / RM are set per table in SetupTable, so no CASE is needed here).
 ! All of them return 0 = ok, like Level:Benign.
 !----------------------------------------------------------------------------
-ThisMIE.OpenTable    PROCEDURE()
+MIE_DictClass.OpenTable PROCEDURE()
   CODE
   #EMBED(%MIEHookOpenTable,'OpenTable - before the table is opened'),TREE('MyImportExport|Hooks|OpenTable')
   IF SELF.FM &= NULL
@@ -467,7 +534,7 @@ ThisMIE.OpenTable    PROCEDURE()
   SELF.FMOpens += 1
   RETURN 0
 
-ThisMIE.CloseTable   PROCEDURE()
+MIE_DictClass.CloseTable PROCEDURE()
   CODE
   #EMBED(%MIEHookCloseTable,'CloseTable - before the table is closed'),TREE('MyImportExport|Hooks|CloseTable')
   IF SELF.FM &= NULL
@@ -483,7 +550,7 @@ ThisMIE.CloseTable   PROCEDURE()
     SELF.FMOpens -= 1
   END
 
-ThisMIE.PrimeRecord  PROCEDURE()
+MIE_DictClass.PrimeRecord PROCEDURE()
   CODE
   #EMBED(%MIEHookPrimeRecord,'PrimeRecord - before the new record is primed'),TREE('MyImportExport|Hooks|PrimeRecord')
   IF SELF.FM &= NULL
@@ -492,7 +559,7 @@ ThisMIE.PrimeRecord  PROCEDURE()
     SELF.FM.PrimeRecord()                           ! clears the buffer, primes auto-increment
   END
 
-ThisMIE.CancelPrime  PROCEDURE()
+MIE_DictClass.CancelPrime PROCEDURE()
   CODE
   #EMBED(%MIEHookCancelPrime,'CancelPrime - before a primed record is cancelled'),TREE('MyImportExport|Hooks|CancelPrime')
   IF SELF.FM &= NULL
@@ -501,7 +568,7 @@ ThisMIE.CancelPrime  PROCEDURE()
     SELF.FM.CancelAutoInc()
   END
 
-ThisMIE.InsertRecord PROCEDURE()
+MIE_DictClass.InsertRecord PROCEDURE()
   CODE
   #EMBED(%MIEHookInsertRecord,'InsertRecord - before the record is added'),TREE('MyImportExport|Hooks|InsertRecord')
   IF SELF.FM &= NULL
@@ -512,7 +579,7 @@ ThisMIE.InsertRecord PROCEDURE()
   END
   RETURN SELF.FM.TryInsert()
 
-ThisMIE.UpdateRecord PROCEDURE()
+MIE_DictClass.UpdateRecord PROCEDURE()
   CODE
   #EMBED(%MIEHookUpdateRecord,'UpdateRecord - before the record is written back'),TREE('MyImportExport|Hooks|UpdateRecord')
   IF SELF.FM &= NULL
@@ -520,7 +587,7 @@ ThisMIE.UpdateRecord PROCEDURE()
   END
   RETURN SELF.FM.TryUpdate()
 
-ThisMIE.FetchRecord  PROCEDURE()
+MIE_DictClass.FetchRecord PROCEDURE()
   CODE
   #EMBED(%MIEHookFetchRecord,'FetchRecord - before the record is read by its primary key'),TREE('MyImportExport|Hooks|FetchRecord')
   IF SELF.FM &= NULL
@@ -531,7 +598,7 @@ ThisMIE.FetchRecord  PROCEDURE()
   END
   RETURN SELF.FM.TryFetch(SELF.TableKey)
 
-ThisMIE.DeleteRecord PROCEDURE()
+MIE_DictClass.DeleteRecord PROCEDURE()
   CODE
   #EMBED(%MIEHookDeleteRecord,'DeleteRecord - before a record is deleted (Replace all)'),TREE('MyImportExport|Hooks|DeleteRecord')
   IF SELF.FM &= NULL
@@ -548,7 +615,7 @@ ThisMIE.DeleteRecord PROCEDURE()
 ! Rules: ValidateRecord (import, non-zero = skip the row) and
 ! ExportFilter (export, 0 = skip the record). SELF.TableName = table label.
 !----------------------------------------------------------------------------
-ThisMIE.ValidateRecord PROCEDURE()
+MIE_DictClass.ValidateRecord PROCEDURE()
 ReturnValue          BYTE,AUTO
   CODE
   ReturnValue = PARENT.ValidateRecord()
@@ -566,7 +633,7 @@ ReturnValue          BYTE,AUTO
   #RESUME
   RETURN ReturnValue
 
-ThisMIE.ExportFilter PROCEDURE()
+MIE_DictClass.ExportFilter PROCEDURE()
 ReturnValue          BYTE,AUTO
   CODE
   ReturnValue = PARENT.ExportFilter()
