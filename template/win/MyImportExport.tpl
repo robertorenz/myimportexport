@@ -2,7 +2,7 @@
 #!============================================================================
 #! MyImportExport - generic import / export for any dictionary table
 #!   Formats : CSV, TSV, JSON, XML, XLS, XLSX  (via MIEConvert.exe)
-#!   Class   : libsrc\MyImportExport.inc / .clw   (MyImportExportClass)
+#!   Class   : libsrc\win\MyImportExport.inc / .clw   (MyImportExportClass)
 #!   Repo    : https://github.com/robertorenz/myimportexport
 #!
 #!   Templates in this set

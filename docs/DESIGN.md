@@ -3,9 +3,9 @@
 Three parts, built independently, wired together by this contract.
 
 ```
- AppGen template (template\MyImportExport.tpl)
+ AppGen template (template\win\MyImportExport.tpl/.tpw)
    └─ generates, per dictionary table, AddField() calls + ABC/Legacy file hooks
-        └─ Clarion class MyImportExportClass (libsrc\MyImportExport.inc/.clw)
+        └─ Clarion class MyImportExportClass (libsrc\win\MyImportExport.inc/.clw)
              ├─ mapping window (choose columns, align to fields, choose sheet)
              ├─ reads/writes the MIE-TSV intermediate file
              └─ RUN()s the helper
@@ -65,7 +65,7 @@ Export rules: `N` columns become numeric cells / unquoted JSON numbers (empty ->
 `D` -> real Excel date cells (format yyyy-mm-dd), `T` -> Excel time cells (hh:mm:ss).
 XML element names are sanitised (invalid chars -> `_`).
 
-## 3. Clarion class (libsrc\MyImportExport.inc)
+## 3. Clarion class (libsrc\win\MyImportExport.inc)
 
 See the .inc for the authoritative declaration. Key API used by generated code:
 

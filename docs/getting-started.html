@@ -1,0 +1,293 @@
+<title>MyImportExport Getting Started</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#fbfcfd; --surface:#f1f5f9; --sunken:#e9eff5; --rule:#d6e0ea;
+  --ink:#0f1720; --soft:#4e5f70; --faint:#7d8ea0;
+  --accent:#2f6a9a; --accent-bg:#e4eef6; --accent-rule:#b9d3e6;
+  --clarion:#166f69; --clarion-bg:#e2f1ef;
+  --warn:#8a5a12; --warn-bg:#f7eeda;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0d131a; --surface:#151d26; --sunken:#111922; --rule:#25313d;
+    --ink:#e2eaf2; --soft:#9aabbc; --faint:#6f8092;
+    --accent:#6fadde; --accent-bg:#152738; --accent-rule:#28455f;
+    --clarion:#4fb5ab; --clarion-bg:#102a29;
+    --warn:#d8a545; --warn-bg:#2b2413;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0d131a; --surface:#151d26; --sunken:#111922; --rule:#25313d;
+  --ink:#e2eaf2; --soft:#9aabbc; --faint:#6f8092;
+  --accent:#6fadde; --accent-bg:#152738; --accent-rule:#28455f;
+  --clarion:#4fb5ab; --clarion-bg:#102a29;
+  --warn:#d8a545; --warn-bg:#2b2413;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,serif; font-size:16px; line-height:1.62;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,.ui{font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+a{color:var(--accent)}
+.wrap{display:grid; grid-template-columns:270px minmax(0,1fr); align-items:start}
+.side{position:sticky; top:0; height:100vh; overflow-y:auto; padding:24px 20px 60px;
+  border-right:1px solid var(--rule); background:var(--surface)}
+.brand{font-family:"IBM Plex Sans",sans-serif; font-weight:600; font-size:15px; margin:0 0 14px}
+.brand b{color:var(--accent)}
+/* ---- the four volumes ---- */
+.vols{list-style:none; margin:0 0 18px; padding:0; display:flex; flex-direction:column; gap:3px;
+  border-bottom:1px solid var(--rule); padding-bottom:16px}
+.vols a{display:block; padding:7px 10px; border-radius:6px; text-decoration:none;
+  font:500 13px/1.35 "IBM Plex Sans",sans-serif; color:var(--soft); border:1px solid transparent}
+.vols a:hover{background:var(--sunken); color:var(--ink)}
+.vols a.here{background:var(--accent-bg); border-color:var(--accent-rule); color:var(--accent)}
+.vols small{display:block; font:400 11px/1.35 "IBM Plex Sans",sans-serif; color:var(--faint);
+  margin-top:2px}
+.vols a.here small{color:var(--accent)}
+.filter{width:100%; margin:0 0 16px; padding:7px 10px; font:13px/1.4 "IBM Plex Sans",sans-serif;
+  color:var(--ink); background:var(--paper); border:1px solid var(--rule); border-radius:6px}
+.filter:focus{outline:2px solid var(--accent); outline-offset:1px}
+.nav__g{font:600 10.5px/1 "IBM Plex Sans",sans-serif; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--faint); margin:18px 0 8px}
+.nav__l{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1px}
+.nav__l a{display:block; padding:4px 8px; border-radius:5px; text-decoration:none; color:var(--soft);
+  font:400 13.5px/1.45 "IBM Plex Sans",sans-serif}
+.nav__l a:hover{background:var(--sunken); color:var(--ink)}
+.nav__l a.on{background:var(--accent-bg); color:var(--accent); font-weight:500}
+.main{padding:0 0 120px; min-width:0}
+.inner{max-width:980px; padding:0 40px}
+.hero{padding:52px 40px 30px; border-bottom:1px solid var(--rule);
+  background:linear-gradient(180deg,var(--accent-bg),transparent)}
+.hero .inner{padding:0}
+.eyebrow{font:600 11px/1 "IBM Plex Sans",sans-serif; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accent); margin:0 0 12px}
+h1{font-size:37px; line-height:1.1; margin:0 0 10px; letter-spacing:-.015em; text-wrap:balance}
+.sub{font-size:17px; color:var(--soft); margin:0 0 18px; max-width:62ch}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{font:500 11.5px/1 "IBM Plex Sans",sans-serif; padding:6px 10px; border-radius:99px;
+  border:1px solid var(--rule); background:var(--paper); color:var(--soft)}
+.chip b{color:var(--ink); font-weight:600}
+h2{font-size:26px; margin:60px 0 6px; letter-spacing:-.01em; scroll-margin-top:18px; text-wrap:balance}
+h2 .k{font:600 10.5px/1 "IBM Plex Sans",sans-serif; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--accent); display:block; margin-bottom:9px}
+h3{font-size:17.5px; margin:36px 0 10px; scroll-margin-top:18px}
+h4{font-size:14.5px; margin:24px 0 6px; color:var(--soft); font-weight:600}
+p{margin:0 0 14px; max-width:70ch}
+.lead{color:var(--soft); max-width:70ch}
+ul.b,ol.b{max-width:70ch; padding-left:20px; margin:0 0 16px}
+ul.b li,ol.b li{margin:0 0 7px}
+.code{background:var(--sunken); border:1px solid var(--rule); border-left:3px solid var(--accent-rule);
+  border-radius:0 7px 7px 0; padding:14px 16px; overflow-x:auto; margin:0 0 18px;
+  font-size:12.9px; line-height:1.62; position:relative}
+.code code{white-space:pre; color:var(--ink)}
+.code::after{content:attr(data-lang); position:absolute; top:0; right:0; padding:3px 9px;
+  font:500 9.5px/1 "IBM Plex Sans",sans-serif; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--faint); background:var(--surface); border-left:1px solid var(--rule);
+  border-bottom:1px solid var(--rule); border-radius:0 0 0 6px}
+.code--use{margin:7px 0 2px; border-left-color:var(--clarion); background:var(--paper);
+  font-size:12.4px; padding:9px 12px}
+.code--use::after{content:'Clarion'; color:var(--clarion)}
+p code,li code,td code{background:var(--sunken); border:1px solid var(--rule); border-radius:4px;
+  padding:.06em .34em; font-size:.86em}
+.tw{overflow-x:auto; margin:0 0 20px; border:1px solid var(--rule); border-radius:8px;
+  background:var(--paper)}
+table{border-collapse:collapse; width:100%; font-size:13.5px;
+  font-family:"IBM Plex Sans",sans-serif}
+th{text-align:left; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--faint); padding:9px 14px; border-bottom:1px solid var(--rule); background:var(--surface)}
+td{padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top}
+tr:last-child td{border-bottom:0}
+.fns .fn__n{width:210px; white-space:nowrap}
+.fns .fn__n code{font-size:12.6px; color:var(--accent); font-weight:500; background:none;
+  border:0; padding:0}
+.fns .fn__s code{font-size:12.4px; color:var(--soft); background:none; border:0; padding:0;
+  white-space:pre-wrap}
+.fn__d{margin:5px 0 0; font-family:"IBM Plex Serif",serif; font-size:13.5px; color:var(--ink);
+  max-width:74ch}
+.ord{margin-left:7px; font:500 10px/1 "IBM Plex Mono",monospace; color:var(--faint);
+  border:1px solid var(--rule); border-radius:4px; padding:2px 4px; vertical-align:1px}
+.eq td:first-child code{color:var(--accent); background:none; border:0; padding:0}
+.eq .v{font-variant-numeric:tabular-nums; color:var(--soft)}
+.note{border:1px solid var(--rule); border-left:3px solid var(--accent); background:var(--surface);
+  border-radius:0 7px 7px 0; padding:13px 16px; margin:0 0 18px; max-width:74ch}
+.note--warn{border-left-color:var(--warn); background:var(--warn-bg)}
+.note--cla{border-left-color:var(--clarion); background:var(--clarion-bg)}
+.note__t{font:600 12px/1.3 "IBM Plex Sans",sans-serif; letter-spacing:.03em; margin:0 0 5px;
+  text-transform:uppercase; color:var(--soft)}
+.note--warn .note__t{color:var(--warn)} .note--cla .note__t{color:var(--clarion)}
+.note__b p{margin:0 0 8px; font-size:14.5px} .note__b p:last-child{margin:0}
+.stack{display:flex; flex-direction:column; gap:9px; margin:0 0 22px; max-width:640px}
+.layer{border:1px solid var(--rule); border-radius:8px; padding:12px 15px; background:var(--surface);
+  display:grid; grid-template-columns:118px 1fr; gap:14px; align-items:baseline}
+.layer b{font:600 11px/1.4 "IBM Plex Sans",sans-serif; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--accent)}
+.layer.cla b{color:var(--clarion)}
+.layer p{margin:0; font-size:14px; color:var(--soft); max-width:none}
+.arrow{text-align:center; color:var(--faint); font-size:12px; margin:-4px 0}
+/* ---- where to next ---- */
+.next{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px;
+  margin:26px 0 0}
+.next a{display:block; padding:14px 16px; border:1px solid var(--rule); border-radius:9px;
+  background:var(--surface); text-decoration:none}
+.next a:hover{border-color:var(--accent-rule); background:var(--accent-bg)}
+.next b{display:block; font:600 14px/1.3 "IBM Plex Sans",sans-serif; color:var(--accent);
+  margin-bottom:3px}
+.next span{font:400 13px/1.45 "IBM Plex Serif",serif; color:var(--soft)}
+.hide{display:none !important}
+footer{margin-top:70px; padding:22px 40px 0; border-top:1px solid var(--rule); color:var(--faint);
+  font:400 13px/1.6 "IBM Plex Sans",sans-serif}
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr}
+  .side{position:static; height:auto; border-right:0; border-bottom:1px solid var(--rule)}
+  .inner,.hero{padding-left:22px; padding-right:22px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+</style>
+<div class="wrap">
+<nav class="side">
+  <p class="brand"><b>MyImportExport</b></p>
+<ul class="vols"><li><a href="#" class="here">1. Getting Started<small>Install it and move your first table</small></a></li><li><a href="https://claude.ai/artifact/4aSEmtQNKFZ69p6ZrBKFmt">2. Programmer&#x27;s Guide<small>How it works, and how to make it do things</small></a></li><li><a href="https://claude.ai/artifact/GNowfmcedV2PeR2qqoVWAp">3. Template Guide<small>Every template, tab, prompt and embed</small></a></li><li><a href="https://claude.ai/artifact/KKSUT9nrRMcaNbsr1qfD1s">4. Reference<small>The class, the equates and the helper</small></a></li></ul><p class="nav__g">Start here</p><ul class="nav__l"><li><a href="#what">What it does</a></li><li><a href="#needs">Requirements</a></li><li><a href="#install">Install</a></li><li><a href="#app">Add it to an app</a></li><li><a href="#first-export">Your first export</a></li><li><a href="#first-import">Your first import</a></li></ul><p class="nav__g">More</p><ul class="nav__l"><li><a href="#hand">The smallest program by hand</a></li><li><a href="#ship">Shipping your program</a></li><li><a href="#demos">The demos</a></li><li><a href="#next1">Where to go next</a></li></ul>
+</nav>
+<main class="main">
+  <header class="hero"><div class="inner">
+    <p class="eyebrow">Volume 1</p>
+    <h1>Getting Started</h1>
+    <p class="sub">Install the template, put Import and Export buttons on a browse, and move your first table in and out of Excel.</p>
+    <div class="chips"><span class="chip"><b>6</b> file formats</span><span class="chip"><b>3</b> templates</span><span class="chip"><b>1</b> helper exe</span><span class="chip">v1.0</span></div>
+  </div></header>
+  <div class="inner"><h2 id="what"><span class="k">Overview</span>What it does</h2><p>MyImportExport lets the users of a Clarion program move the data of any table in the
+dictionary in and out of <b>CSV, TSV, JSON, XML, XLSX and XLS</b> files. One window does both
+directions. The user picks a file, an Excel sheet if there is one, ticks the columns to use and lines
+each column of the file up with a field of the table. The settings are remembered per table, so the
+next run of the same job is two clicks.</p><div class="stack">
+<div class="layer"><b>Template</b><p>Writes a procedure <code>MIE_ImportExport(table, mode)</code> that knows
+every table and field in your dictionary, and drops Import / Export buttons on your browses.</p></div>
+<div class="arrow">&darr;</div>
+<div class="layer cla"><b>Clarion class</b><p><code>MyImportExportClass</code>: the window, the mapping, the
+import modes, the type conversion, and the reads and writes on your table.</p></div>
+<div class="arrow">&darr;</div>
+<div class="layer"><b>Helper</b><p><code>MIEConvert.exe</code>: reads and writes the six formats. A single
+110 KB program; Excel does not need to be installed.</p></div>
+</div><h2 id="needs"><span class="k">Before you start</span>Requirements</h2><div class="tw"><table class=""><thead><tr><th>What</th><th>Needed</th></tr></thead><tbody><tr><td>Clarion</td><td>12 (ABC or Clarion/Legacy template chain)</td></tr><tr><td>File driver</td><td>DOS must be registered &mdash; the class uses it for its temporary files. It is, in a standard install.</td></tr><tr><td>On the users' PCs</td><td>.NET Framework 4.8 for <code>MIEConvert.exe</code>. Windows 10 and 11 ship with it.</td></tr><tr><td>Excel</td><td>Not needed. The helper writes real .xlsx and .xls files itself.</td></tr></tbody></table></div><h2 id="install"><span class="k">Step 1</span>Install</h2><p>From the repository folder run the install script. It copies the files into your Clarion installation and registers the template.</p><pre class="code" data-lang="shell"><code>pwsh .\install.ps1                      # or: pwsh .\install.ps1 -ClarionRoot D:\clarion12</code></pre><div class="tw"><table class=""><thead><tr><th>File</th><th>Goes to</th></tr></thead><tbody><tr><td><code>template\win\MyImportExport.tpl</code>, <code>.tpw</code></td><td><code>accessory\template\win</code></td></tr><tr><td><code>libsrc\win\MyImportExport.inc</code>, <code>.clw</code></td><td><code>accessory\libsrc\win</code></td></tr><tr><td><code>bin\MIEConvert.exe</code></td><td><code>accessory\bin</code></td></tr></tbody></table></div><aside class="note note--cla"><p class="note__t">Restart the IDE</p><div class="note__b"><p>The template registry is read when the IDE starts. If Clarion was open while you installed, close and reopen it before you look for the templates.</p></div></aside><h2 id="app"><span class="k">Step 2</span>Add it to an app</h2><ol class="b">
+<li>Open the app, <b>Global</b> &rarr; <b>Extensions</b> &rarr; <b>Insert</b> &rarr;
+<code>MyImportExportGlobal</code>. The defaults are right for a single-EXE app.</li>
+<li>Open a browse procedure, <b>Window</b> designer &rarr; <b>Control Templates</b> &rarr;
+<code>MyImportExportButtons</code>. Place the two buttons where you want them.</li>
+<li>Generate and run. Click <b>Export...</b> on the browse.</li>
+</ol><p>The buttons work on the browse's table. The global extension made the procedure behind them,
+<code>MIE_ImportExport</code>, which you can also call from anywhere yourself:</p><pre class="code" data-lang="clarion"><code>MIE_ImportExport(&#x27;Customer&#x27;, MIE:Mode:Export)   ! straight to export
+MIE_ImportExport(&#x27;&#x27;)                            ! the user picks a table first</code></pre><h2 id="first-export"><span class="k">Step 3</span>Your first export</h2><ol class="b">
+<li><b>Action</b> is already <i>Export</i>. Pick a <b>Format</b> &mdash; XLSX is the default.</li>
+<li>Click <b>...</b> next to <b>File</b> and choose where to save. The extension follows the format.</li>
+<li>For Excel, type a <b>Sheet</b> name, or leave it blank for <i>Sheet1</i>.</li>
+<li>In the field list, untick what you do not want (double-click or Space). Change a <b>Column header</b>
+in the box below the list, and reorder with <b>Move Up</b> / <b>Move Down</b>.</li>
+<li>Click <b>Export</b>. A message tells you how many records went out.</li>
+</ol><p>Dates come out as real Excel dates, numbers as numbers, and the header row is bold.</p><h2 id="first-import"><span class="k">Step 4</span>Your first import</h2><ol class="b">
+<li>Switch <b>Action</b> to <i>Import</i> and choose the file. The sheets and columns are read at once.</li>
+<li>Pick the <b>Sheet</b>. Columns whose names match a field are mapped already; the <b>Sample</b> column
+shows a value from the first row so you can see what you are mapping.</li>
+<li>For a field that did not match, select it and choose its <b>Source column</b> below the list.</li>
+<li>Choose the <b>Import mode</b>: add new records, add or update by primary key, update only, or replace
+all records.</li>
+<li>Click <b>Import</b>. The result shows rows read, added, updated, skipped and failed.</li>
+</ol><aside class="note note--warn"><p class="note__t">Replace all deletes first</p><div class="note__b"><p><i>Replace all records</i> empties the table before it adds the rows, and asks first. Use it for lookup tables you reload from a master file.</p></div></aside><h2 id="hand"><span class="k">Without the template</span>The smallest program by hand</h2><p>The class works on its own. Name the table, offer its fields, open the window:</p><pre class="code" data-lang="clarion"><code>  PROGRAM
+
+  INCLUDE(&#x27;MyImportExport.inc&#x27;),ONCE
+
+  MAP
+  END
+
+Customer   FILE,DRIVER(&#x27;TOPSPEED&#x27;),NAME(&#x27;customer.tps&#x27;),PRE(CUS),CREATE,THREAD
+KeyId        KEY(CUS:Id),PRIMARY,NOCASE
+Record       RECORD
+Id             LONG
+Name           STRING(40)
+Since          DATE
+Balance        DECIMAL(11,2)
+             END
+           END
+
+MIE        MyImportExportClass
+
+  CODE
+  MIE.Init()
+  MIE.SetTable(Customer, &#x27;Customer&#x27;, CUS:KeyId)
+  MIE.AddField(&#x27;CUS:Id&#x27;,      &#x27;Id&#x27;,      &#x27;LONG&#x27;,    &#x27;@n_10&#x27;,   CUS:Id, 1)
+  MIE.AddField(&#x27;CUS:Name&#x27;,    &#x27;Name&#x27;,    &#x27;STRING&#x27;,  &#x27;@s40&#x27;,    CUS:Name)
+  MIE.AddField(&#x27;CUS:Since&#x27;,   &#x27;Since&#x27;,   &#x27;DATE&#x27;,    &#x27;@d17&#x27;,    CUS:Since)
+  MIE.AddField(&#x27;CUS:Balance&#x27;, &#x27;Balance&#x27;, &#x27;DECIMAL&#x27;, &#x27;@n-14.2&#x27;, CUS:Balance)
+  MIE.LoadMap()                    ! what was used last time, if anything
+  MIE.Ask()                        ! the import / export window
+  MIE.Kill()</code></pre><p>Set the two project defines so the class is compiled into the program, and add the DOS driver to the project:</p><pre class="code" data-lang="clarion"><code>_MIEDllMode_=&gt;0;_MIELinkMode_=&gt;1          ! Project &gt; Properties &gt; Compiler &gt; Defines</code></pre><h2 id="ship"><span class="k">Deploying</span>Shipping your program</h2><ul class="b">
+<li>Put <code>MIEConvert.exe</code> next to your program's exe. The global extension can copy it to the
+output folder on every build (<b>Helper &amp; INI</b> tab).</li>
+<li>Saved mappings go to your program's INI file (ABC: <code>INIMgr.FileName</code>), in one
+<code>[MIE_&lt;table&gt;]</code> section per table.</li>
+<li>Nothing is registered and nothing is installed: the helper is a plain exe.</li>
+</ul><h2 id="demos"><span class="k">Examples</span>The demos</h2><div class="tw"><table class=""><thead><tr><th>Folder</th><th>What is in it</th></tr></thead><tbody><tr><td><code>example\</code></td><td><code>MIEDemo.dctx</code> (Customer with auto-increment key, dates, times, an array, a MEMO and an excluded field; Product; an excluded AppLog table) and <code>MIEDemo.txa</code>, an ABC app with the buttons on a browse. Import the dictionary, then the TXA.</td></tr><tr><td><code>test\</code></td><td><code>MIETest.clw</code> exports a table to all six formats, imports each file into a copy and compares every field. <code>pwsh test\build.ps1</code> builds and runs it.</td></tr><tr><td><code>helper\tests\</code></td><td><code>run_tests.py</code> checks the helper alone: round trips, files from Excel and other tools, every option.</td></tr></tbody></table></div><h2 id="next1"><span class="k">Getting Started</span>Where to go next</h2><div class="next"><a href="https://claude.ai/artifact/4aSEmtQNKFZ69p6ZrBKFmt"><b>Programmer&#x27;s Guide &rarr;</b><span>How it works, and how to make it do things</span></a><a href="https://claude.ai/artifact/GNowfmcedV2PeR2qqoVWAp"><b>Template Guide &rarr;</b><span>Every template, tab, prompt and embed</span></a><a href="https://claude.ai/artifact/KKSUT9nrRMcaNbsr1qfD1s"><b>Reference &rarr;</b><span>The class, the equates and the helper</span></a></div>
+    <footer>MyImportExport &mdash; four volumes. The reference is generated from <code>MyImportExport.inc</code>, <code>MyImportExport.tpl</code> / <code>.tpw</code> and the helper&rsquo;s <code>Program.cs</code>, so what it lists is what is in the build.</footer>
+  </div>
+</main>
+</div>
+<script>
+const q = document.getElementById('filter');
+if (q) {
+  const rows = [...document.querySelectorAll('tr.fn')];
+  q.addEventListener('input', () => {
+    const t = q.value.trim().toLowerCase();
+    rows.forEach(r => r.classList.toggle('hide', t && !r.dataset.k.includes(t)));
+    document.querySelectorAll('.tw').forEach(w => {
+      const body = w.querySelector('tbody');
+      if (!body) return;
+      const any = [...body.querySelectorAll('tr')].some(r => !r.classList.contains('hide'));
+      const h = w.previousElementSibling;
+      w.classList.toggle('hide', !any);
+      if (h && h.tagName === 'H3') h.classList.toggle('hide', !any);
+    });
+  });
+}
+/*  Which sidebar entry is lit.  An IntersectionObserver was the wrong
+    instrument: one click crosses several headings at once, every one of them
+    arrives in a single callback, and the last entry processed won - so the
+    highlight settled one or two sections past the one that was clicked, and
+    the page looked as though it had jumped there.  Position is the question,
+    so ask position.  */
+const links = [...document.querySelectorAll('.nav__l a')];
+if (links.length) {
+  const byId  = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const marks = [...document.querySelectorAll('h2[id],h3[id]')].filter(h => byId.has(h.id));
+  const light = a => links.forEach(l => l.classList.toggle('on', l === a));
+  let held = null, holdUntil = 0, queued = false;
+
+  function spy() {
+    queued = false;
+    if (held) { light(held); return; }
+    let cur = marks[0];
+    for (const h of marks) {
+      if (h.getBoundingClientRect().top <= 120) cur = h; else break;
+    }
+    //  the foot of the page belongs to the last section, however short it is
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2)
+      cur = marks[marks.length - 1];
+    if (cur) light(byId.get(cur.id));
+  }
+
+  //  a click owns the highlight until the scroll it started has landed
+  links.forEach(a => a.addEventListener('click', () => {
+    held = a; holdUntil = performance.now() + 700; light(a);
+  }));
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(spy); } };
+  addEventListener('scroll', () => {
+    if (held && performance.now() > holdUntil) held = null;
+    later();
+  }, {passive: true});
+  addEventListener('resize', later);
+  if (marks.length) spy();
+}
+</script>

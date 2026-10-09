@@ -1,0 +1,272 @@
+<title>MyImportExport Template Guide</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#fbfcfd; --surface:#f1f5f9; --sunken:#e9eff5; --rule:#d6e0ea;
+  --ink:#0f1720; --soft:#4e5f70; --faint:#7d8ea0;
+  --accent:#2f6a9a; --accent-bg:#e4eef6; --accent-rule:#b9d3e6;
+  --clarion:#166f69; --clarion-bg:#e2f1ef;
+  --warn:#8a5a12; --warn-bg:#f7eeda;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0d131a; --surface:#151d26; --sunken:#111922; --rule:#25313d;
+    --ink:#e2eaf2; --soft:#9aabbc; --faint:#6f8092;
+    --accent:#6fadde; --accent-bg:#152738; --accent-rule:#28455f;
+    --clarion:#4fb5ab; --clarion-bg:#102a29;
+    --warn:#d8a545; --warn-bg:#2b2413;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0d131a; --surface:#151d26; --sunken:#111922; --rule:#25313d;
+  --ink:#e2eaf2; --soft:#9aabbc; --faint:#6f8092;
+  --accent:#6fadde; --accent-bg:#152738; --accent-rule:#28455f;
+  --clarion:#4fb5ab; --clarion-bg:#102a29;
+  --warn:#d8a545; --warn-bg:#2b2413;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,serif; font-size:16px; line-height:1.62;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,.ui{font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+a{color:var(--accent)}
+.wrap{display:grid; grid-template-columns:270px minmax(0,1fr); align-items:start}
+.side{position:sticky; top:0; height:100vh; overflow-y:auto; padding:24px 20px 60px;
+  border-right:1px solid var(--rule); background:var(--surface)}
+.brand{font-family:"IBM Plex Sans",sans-serif; font-weight:600; font-size:15px; margin:0 0 14px}
+.brand b{color:var(--accent)}
+/* ---- the four volumes ---- */
+.vols{list-style:none; margin:0 0 18px; padding:0; display:flex; flex-direction:column; gap:3px;
+  border-bottom:1px solid var(--rule); padding-bottom:16px}
+.vols a{display:block; padding:7px 10px; border-radius:6px; text-decoration:none;
+  font:500 13px/1.35 "IBM Plex Sans",sans-serif; color:var(--soft); border:1px solid transparent}
+.vols a:hover{background:var(--sunken); color:var(--ink)}
+.vols a.here{background:var(--accent-bg); border-color:var(--accent-rule); color:var(--accent)}
+.vols small{display:block; font:400 11px/1.35 "IBM Plex Sans",sans-serif; color:var(--faint);
+  margin-top:2px}
+.vols a.here small{color:var(--accent)}
+.filter{width:100%; margin:0 0 16px; padding:7px 10px; font:13px/1.4 "IBM Plex Sans",sans-serif;
+  color:var(--ink); background:var(--paper); border:1px solid var(--rule); border-radius:6px}
+.filter:focus{outline:2px solid var(--accent); outline-offset:1px}
+.nav__g{font:600 10.5px/1 "IBM Plex Sans",sans-serif; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--faint); margin:18px 0 8px}
+.nav__l{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1px}
+.nav__l a{display:block; padding:4px 8px; border-radius:5px; text-decoration:none; color:var(--soft);
+  font:400 13.5px/1.45 "IBM Plex Sans",sans-serif}
+.nav__l a:hover{background:var(--sunken); color:var(--ink)}
+.nav__l a.on{background:var(--accent-bg); color:var(--accent); font-weight:500}
+.main{padding:0 0 120px; min-width:0}
+.inner{max-width:980px; padding:0 40px}
+.hero{padding:52px 40px 30px; border-bottom:1px solid var(--rule);
+  background:linear-gradient(180deg,var(--accent-bg),transparent)}
+.hero .inner{padding:0}
+.eyebrow{font:600 11px/1 "IBM Plex Sans",sans-serif; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accent); margin:0 0 12px}
+h1{font-size:37px; line-height:1.1; margin:0 0 10px; letter-spacing:-.015em; text-wrap:balance}
+.sub{font-size:17px; color:var(--soft); margin:0 0 18px; max-width:62ch}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{font:500 11.5px/1 "IBM Plex Sans",sans-serif; padding:6px 10px; border-radius:99px;
+  border:1px solid var(--rule); background:var(--paper); color:var(--soft)}
+.chip b{color:var(--ink); font-weight:600}
+h2{font-size:26px; margin:60px 0 6px; letter-spacing:-.01em; scroll-margin-top:18px; text-wrap:balance}
+h2 .k{font:600 10.5px/1 "IBM Plex Sans",sans-serif; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--accent); display:block; margin-bottom:9px}
+h3{font-size:17.5px; margin:36px 0 10px; scroll-margin-top:18px}
+h4{font-size:14.5px; margin:24px 0 6px; color:var(--soft); font-weight:600}
+p{margin:0 0 14px; max-width:70ch}
+.lead{color:var(--soft); max-width:70ch}
+ul.b,ol.b{max-width:70ch; padding-left:20px; margin:0 0 16px}
+ul.b li,ol.b li{margin:0 0 7px}
+.code{background:var(--sunken); border:1px solid var(--rule); border-left:3px solid var(--accent-rule);
+  border-radius:0 7px 7px 0; padding:14px 16px; overflow-x:auto; margin:0 0 18px;
+  font-size:12.9px; line-height:1.62; position:relative}
+.code code{white-space:pre; color:var(--ink)}
+.code::after{content:attr(data-lang); position:absolute; top:0; right:0; padding:3px 9px;
+  font:500 9.5px/1 "IBM Plex Sans",sans-serif; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--faint); background:var(--surface); border-left:1px solid var(--rule);
+  border-bottom:1px solid var(--rule); border-radius:0 0 0 6px}
+.code--use{margin:7px 0 2px; border-left-color:var(--clarion); background:var(--paper);
+  font-size:12.4px; padding:9px 12px}
+.code--use::after{content:'Clarion'; color:var(--clarion)}
+p code,li code,td code{background:var(--sunken); border:1px solid var(--rule); border-radius:4px;
+  padding:.06em .34em; font-size:.86em}
+.tw{overflow-x:auto; margin:0 0 20px; border:1px solid var(--rule); border-radius:8px;
+  background:var(--paper)}
+table{border-collapse:collapse; width:100%; font-size:13.5px;
+  font-family:"IBM Plex Sans",sans-serif}
+th{text-align:left; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--faint); padding:9px 14px; border-bottom:1px solid var(--rule); background:var(--surface)}
+td{padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top}
+tr:last-child td{border-bottom:0}
+.fns .fn__n{width:210px; white-space:nowrap}
+.fns .fn__n code{font-size:12.6px; color:var(--accent); font-weight:500; background:none;
+  border:0; padding:0}
+.fns .fn__s code{font-size:12.4px; color:var(--soft); background:none; border:0; padding:0;
+  white-space:pre-wrap}
+.fn__d{margin:5px 0 0; font-family:"IBM Plex Serif",serif; font-size:13.5px; color:var(--ink);
+  max-width:74ch}
+.ord{margin-left:7px; font:500 10px/1 "IBM Plex Mono",monospace; color:var(--faint);
+  border:1px solid var(--rule); border-radius:4px; padding:2px 4px; vertical-align:1px}
+.eq td:first-child code{color:var(--accent); background:none; border:0; padding:0}
+.eq .v{font-variant-numeric:tabular-nums; color:var(--soft)}
+.note{border:1px solid var(--rule); border-left:3px solid var(--accent); background:var(--surface);
+  border-radius:0 7px 7px 0; padding:13px 16px; margin:0 0 18px; max-width:74ch}
+.note--warn{border-left-color:var(--warn); background:var(--warn-bg)}
+.note--cla{border-left-color:var(--clarion); background:var(--clarion-bg)}
+.note__t{font:600 12px/1.3 "IBM Plex Sans",sans-serif; letter-spacing:.03em; margin:0 0 5px;
+  text-transform:uppercase; color:var(--soft)}
+.note--warn .note__t{color:var(--warn)} .note--cla .note__t{color:var(--clarion)}
+.note__b p{margin:0 0 8px; font-size:14.5px} .note__b p:last-child{margin:0}
+.stack{display:flex; flex-direction:column; gap:9px; margin:0 0 22px; max-width:640px}
+.layer{border:1px solid var(--rule); border-radius:8px; padding:12px 15px; background:var(--surface);
+  display:grid; grid-template-columns:118px 1fr; gap:14px; align-items:baseline}
+.layer b{font:600 11px/1.4 "IBM Plex Sans",sans-serif; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--accent)}
+.layer.cla b{color:var(--clarion)}
+.layer p{margin:0; font-size:14px; color:var(--soft); max-width:none}
+.arrow{text-align:center; color:var(--faint); font-size:12px; margin:-4px 0}
+/* ---- where to next ---- */
+.next{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px;
+  margin:26px 0 0}
+.next a{display:block; padding:14px 16px; border:1px solid var(--rule); border-radius:9px;
+  background:var(--surface); text-decoration:none}
+.next a:hover{border-color:var(--accent-rule); background:var(--accent-bg)}
+.next b{display:block; font:600 14px/1.3 "IBM Plex Sans",sans-serif; color:var(--accent);
+  margin-bottom:3px}
+.next span{font:400 13px/1.45 "IBM Plex Serif",serif; color:var(--soft)}
+.hide{display:none !important}
+footer{margin-top:70px; padding:22px 40px 0; border-top:1px solid var(--rule); color:var(--faint);
+  font:400 13px/1.6 "IBM Plex Sans",sans-serif}
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr}
+  .side{position:static; height:auto; border-right:0; border-bottom:1px solid var(--rule)}
+  .inner,.hero{padding-left:22px; padding-right:22px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+</style>
+<div class="wrap">
+<nav class="side">
+  <p class="brand"><b>MyImportExport</b></p>
+<ul class="vols"><li><a href="https://claude.ai/artifact/V9ZKEK5fTN6eSfwsXUwbhX">1. Getting Started<small>Install it and move your first table</small></a></li><li><a href="https://claude.ai/artifact/4aSEmtQNKFZ69p6ZrBKFmt">2. Programmer&#x27;s Guide<small>How it works, and how to make it do things</small></a></li><li><a href="#" class="here">3. Template Guide<small>Every template, tab, prompt and embed</small></a></li><li><a href="https://claude.ai/artifact/KKSUT9nrRMcaNbsr1qfD1s">4. Reference<small>The class, the equates and the helper</small></a></li></ul><p class="nav__g">Overview</p><ul class="nav__l"><li><a href="#set">The template set</a></li></ul><p class="nav__g">Global extension</p><ul class="nav__l"><li><a href="#global">MyImportExportGlobal</a></li><li><a href="#g-general">General tab</a></li><li><a href="#g-helper-ini">Helper &amp;amp; INI tab</a></li><li><a href="#g-tables">Tables tab</a></li><li><a href="#g-multi-dll">Multi-DLL tab</a></li><li><a href="#g-writes">What it generates</a></li><li><a href="#g-module">The generated procedure</a></li><li><a href="#g-hooks">The ABC hooks</a></li><li><a href="#g-fields">Which fields are offered</a></li></ul><p class="nav__g">Window and code</p><ul class="nav__l"><li><a href="#buttons">MyImportExportButtons</a></li><li><a href="#call">MyImportExportCall</a></li><li><a href="#embeds">Embed points</a></li></ul><p class="nav__g">Recipes</p><ul class="nav__l"><li><a href="#multidll">Multi-DLL suites</a></li><li><a href="#regen">After a dictionary change</a></li><li><a href="#next3">Where to go next</a></li></ul>
+</nav>
+<main class="main">
+  <header class="hero"><div class="inner">
+    <p class="eyebrow">Volume 3</p>
+    <h1>Template Guide</h1>
+    <p class="sub">Every template, tab, prompt and embed point, and what the generator writes into your app. The prompt and embed tables are read out of the template source.</p>
+    <div class="chips"><span class="chip"><b>3</b> templates</span><span class="chip"><b>21</b> prompts</span><span class="chip"><b>17</b> embed points</span><span class="chip">build 2026-10-09a</span></div>
+  </div></header>
+  <div class="inner"><h2 id="set"><span class="k">Overview</span>The template set</h2><p>Template class <code>MyImportExport</code> (MyImportExport - import / export any dictionary table - v1.0), family ABC and Clarion. Three templates, generated from <code>template\win\MyImportExport.tpl</code> and <code>.tpw</code>:</p><div class="tw"><table class=""><thead><tr><th>Template</th><th>Kind</th><th>What it is for</th></tr></thead><tbody><tr><td><code>MyImportExportGlobal</code></td><td>Extension</td><td>global support (add once to every app)</td></tr><tr><td><code>MyImportExportButtons</code></td><td>Control</td><td>Import / Export buttons</td></tr><tr><td><code>MyImportExportCall</code></td><td>Code</td><td>import / export a table</td></tr></tbody></table></div><p>Add the global extension first: the other two require it. Every table in the dictionary is
+offered unless you exclude it, so a table added to the dictionary next year shows up in the window after
+the next generate, with no other change.</p><h2 id="global"><span class="k">Extension</span>MyImportExportGlobal</h2><p>An application extension. Add it once to every app &mdash; in a multi-DLL suite, to each app of the suite. Its tabs:</p><h3 id="g-general">General tab</h3><p>Turns the template on and off, and decides where MIE_ImportExport is generated.</p><div class="tw"><table class=""><thead><tr><th>Prompt</th><th>Symbol</th><th>Kind</th><th>Default</th></tr></thead><tbody><tr><td>Disable MyImportExport in this application</td><td><code>%MIEDisable</code></td><td>CHECK</td><td><code>0</code></td></tr><tr><td>Generate MIE_ImportExport in this application<br><small style="color:var(--faint)">The MIE_ImportExport procedure</small></td><td><code>%MIEGenerate</code></td><td>CHECK</td><td><code>%GlobalExternal=0</code></td></tr><tr><td>Default format<br><small style="color:var(--faint)">Defaults used by the import / export window</small></td><td><code>%MIEFormat</code></td><td>drop: XLSX | XLS | CSV | TSV | JSON | XML</td><td><code>XLSX</code></td></tr><tr><td>Use dictionary pictures for dates, times and numbers<br><small style="color:var(--faint)">Defaults used by the import / export window</small></td><td><code>%MIEUsePictures</code></td><td>CHECK</td><td><code>0</code></td></tr></tbody></table></div><h3 id="g-helper-ini">Helper &amp; INI tab</h3><p>Where the helper and the saved mappings live at run time.</p><div class="tw"><table class=""><thead><tr><th>Prompt</th><th>Symbol</th><th>Kind</th><th>Default</th></tr></thead><tbody><tr><td>Helper program<br><small style="color:var(--faint)">MIEConvert.exe</small></td><td><code>%MIEHelper</code></td><td>@s255</td><td><code>MIEConvert.exe</code></td></tr><tr><td>Copy the helper to the output folder on build<br><small style="color:var(--faint)">MIEConvert.exe</small></td><td><code>%MIECopyHelper</code></td><td>CHECK</td><td><code>0</code></td></tr><tr><td>INI file<br><small style="color:var(--faint)">Saved column mappings</small></td><td><code>%MIEIniFile</code></td><td>@s255</td><td>&mdash;</td></tr></tbody></table></div><h3 id="g-tables">Tables tab</h3><p>Which tables are offered, and how Replace all deletes.</p><div class="tw"><table class=""><thead><tr><th>Prompt</th><th>Symbol</th><th>Kind</th><th>Default</th></tr></thead><tbody><tr><td>Exclude tables<br><small style="color:var(--faint)">Tables that are NOT offered</small></td><td><code>%MIEExcludeTables</code></td><td>from %File</td><td>&mdash;</td></tr><tr><td>Delete with<br><small style="color:var(--faint)">ABC: &quot;Replace all&quot; import mode deletes records through</small></td><td><code>%MIEDeleteVia</code></td><td>drop: FileManager (no cascade) | RelationManager (enforce RI)</td><td><code>FileManager (no cascade)</code></td></tr></tbody></table></div><h3 id="g-multi-dll">Multi-DLL tab</h3><p>Where the class code lives in a suite of DLLs. Default does the right thing in almost every app.</p><div class="tw"><table class=""><thead><tr><th>Prompt</th><th>Symbol</th><th>Kind</th><th>Default</th></tr></thead><tbody><tr><td>Class code<br><small style="color:var(--faint)">Where the MyImportExportClass code lives</small></td><td><code>%MIEClassLocation</code></td><td>drop: Default | Compile into this application | Import from a DLL</td><td><code>Default</code></td></tr><tr><td>Export the class from this DLL<br><small style="color:var(--faint)">Where the MyImportExportClass code lives</small></td><td><code>%MIEExportClass</code></td><td>drop: Default | Yes | No</td><td><code>Default</code></td></tr></tbody></table></div><aside class="note note--cla"><p class="note__t">Expressions in the prompts</p><div class="note__b"><p>Start <b>Helper program</b> or <b>INI file</b> with <code>!</code> to use a variable or expression instead of a literal, e.g. <code>!GLO:DataPath &amp; '\mie.ini'</code>. A helper name without a folder is looked up beside the program at run time.</p></div></aside><h3 id="g-writes">What it generates</h3><div class="tw"><table class=""><thead><tr><th>Where</th><th>What</th></tr></thead><tbody><tr><td>Global includes</td><td><code>INCLUDE('MyImportExport.inc'),ONCE</code></td></tr><tr><td>Project</td><td>The defines <code>_MIEDllMode_</code> / <code>_MIELinkMode_</code>, the DOS driver, the module <code>&lt;program&gt;_MIE.clw</code>, and, if ticked, the helper with <i>copy to output</i>.</td></tr><tr><td>Global MAP</td><td><code>MIE_ImportExport(STRING,BYTE=0),BYTE,PROC</code> &mdash; with <code>,DLL</code> in apps that do not generate it.</td></tr><tr><td>Used files</td><td>Every offered table, so ABC declares its <code>Access:</code> and <code>Relate:</code> objects.</td></tr><tr><td>DLL export list</td><td><code>MIE_ImportExport</code>, and in the DLL that holds the class, its VMT, type descriptor and every non-private method &mdash; computed from the .inc at generate time.</td></tr></tbody></table></div><h3 id="g-module">The generated procedure</h3><p>Abridged from a real generated <code>_MIE.clw</code>:</p><pre class="code" data-lang="clarion"><code>MIE_ImportExport     PROCEDURE(STRING pTable,BYTE pMode)
+ThisMIE              CLASS(MyImportExportClass)
+FM                     &amp;FileManager
+RM                     &amp;RelationManager
+  ...                                              ! the hooks, see below
+                     END
+  CODE
+  TableName = pTable
+  IF TableName = &#x27;&#x27; THEN DO PickTable.             ! small list of every offered table
+  ThisMIE.Init()
+  ThisMIE.HelperPath = &#x27;MIEConvert.exe&#x27;            ! made absolute: beside the program
+  ThisMIE.IniFile    = INIMgr.FileName
+  ThisMIE.Format     = &#x27;XLSX&#x27;
+  CASE UPPER(TableName)
+  OF &#x27;CUSTOMER&#x27;                                    ! Customers
+    ThisMIE.FM &amp;= Access:Customer
+    ThisMIE.RM &amp;= Relate:Customer
+    ThisMIE.SetTable(Customer,&#x27;Customer&#x27;,CUS:KeyCustNumber)
+    ThisMIE.AddField(&#x27;CUS:CustNumber&#x27;,&#x27;CustNumber&#x27;,&#x27;LONG&#x27;,&#x27;@n_10&#x27;,CUS:CustNumber,1)
+    ThisMIE.AddField(&#x27;CUS:Name&#x27;,&#x27;Name&#x27;,&#x27;STRING&#x27;,&#x27;@s40&#x27;,CUS:Name,0)
+    ThisMIE.AddField(&#x27;CUS:Phones[1]&#x27;,&#x27;Phones_1&#x27;,&#x27;STRING&#x27;,&#x27;@s20&#x27;,CUS:Phones[1],0)
+    ...
+  OF &#x27;PRODUCT&#x27;
+    ...
+  END
+  ThisMIE.LoadMap()
+  Result = ThisMIE.Ask(pMode)
+  ThisMIE.Kill()
+  RETURN Result</code></pre><h3 id="g-hooks">The ABC hooks</h3><p>In an ABC app <code>ThisMIE</code> routes the table I/O through the table's FileManager and RelationManager. <code>FM</code> and <code>RM</code> are set per table, so the hooks need no <code>CASE</code>:</p><div class="tw"><table class=""><thead><tr><th>Hook</th><th>Generated as</th></tr></thead><tbody><tr><td><code>OpenTable</code></td><td><code>FM.Open()</code> (or <code>RM.Open()</code> with RelationManager deletes) + <code>FM.UseFile()</code>; opens and closes are counted.</td></tr><tr><td><code>CloseTable</code></td><td><code>FM.Close()</code> / <code>RM.Close()</code></td></tr><tr><td><code>PrimeRecord</code></td><td><code>FM.PrimeRecord()</code> &mdash; clears the buffer and primes auto-increment</td></tr><tr><td><code>CancelPrime</code></td><td><code>FM.CancelAutoInc()</code></td></tr><tr><td><code>InsertRecord</code></td><td><code>FM.TryInsert()</code>; a plain <code>ADD</code> when the key column is mapped on an auto-increment table, so imported IDs are kept</td></tr><tr><td><code>UpdateRecord</code></td><td><code>FM.TryUpdate()</code></td></tr><tr><td><code>FetchRecord</code></td><td><code>FM.TryFetch(SELF.TableKey)</code></td></tr><tr><td><code>DeleteRecord</code></td><td><code>FM.DeleteRecord(0)</code> (no cascade), or <code>RM.Delete(0)</code> (dictionary RI)</td></tr><tr><td><code>ValidateRecord</code>, <code>ExportFilter</code></td><td>Your embeds: one for any table, one per table</td></tr></tbody></table></div><p>In a Clarion (Legacy) app only <code>ValidateRecord</code> and <code>ExportFilter</code> are generated; the class's own raw-driver hooks do the I/O.</p><h3 id="g-fields">Which fields are offered</h3><div class="tw"><table class=""><thead><tr><th>Dictionary item</th><th>Result</th></tr></thead><tbody><tr><td>A field</td><td>One <code>AddField</code>. Column name: the external <code>NAME()</code> if set, else the label without its prefix.</td></tr><tr><td>A <code>DIM()</code> array</td><td>One column per element: <code>CUS:Phones[1]</code> &rarr; <code>Phones_1</code>.</td></tr><tr><td>Fields inside a plain GROUP</td><td>Offered one by one; the GROUP itself is not.</td></tr><tr><td>MEMO, BLOB</td><td>Not offered.</td></tr><tr><td>A field declared <code>OVER()</code>, or anything inside an OVER or DIM group</td><td>Not offered (it would duplicate another field).</td></tr><tr><td><code>MIEEXCLUDE</code> in a field's or GROUP's User Options</td><td>Not offered.</td></tr><tr><td><code>MIEEXCLUDE</code> in a table's User Options, or ticked under Exclude tables</td><td>The whole table is left out.</td></tr><tr><td>ALIAS tables</td><td>Left out: the real table is offered instead.</td></tr><tr><td>The picture</td><td>The dictionary picture; when there is none, one by type (<code>@d10-</code>, <code>@t4</code>, <code>@s255</code>, <code>@n-21.2</code> ...).</td></tr><tr><td><code>pIsKey</code></td><td>1 for the components of the primary key.</td></tr></tbody></table></div><h2 id="buttons"><span class="k">Control</span>MyImportExportButtons</h2><p>A window control template: an <b>Import...</b> and an <b>Export...</b> button, or one button that pops a small Import / Export menu. You can put several on one window, each for a different table.</p><div class="tw"><table class=""><thead><tr><th>Prompt</th><th>Symbol</th><th>Kind</th><th>Default</th></tr></thead><tbody><tr><td>Disable these buttons</td><td><code>%MIEBtnDisable</code></td><td>CHECK</td><td><code>0</code></td></tr><tr><td>Table</td><td><code>%MIEBtnTableSource</code></td><td>drop: Procedure&#x27;s primary table | A specific table | Ask the user at run time</td><td><code>Procedure&#x27;s primary table</code></td></tr><tr><td>Specific table</td><td><code>%MIEBtnTable</code></td><td>from %File</td><td>&mdash;</td></tr><tr><td>Buttons</td><td><code>%MIEBtnStyle</code></td><td>drop: Two buttons (Import, Export) | One button (asks Import or Export)</td><td><code>Two buttons (Import, Export)</code></td></tr><tr><td>Refresh the window after a successful import</td><td><code>%MIEBtnRefresh</code></td><td>CHECK</td><td><code>1</code></td></tr></tbody></table></div><p><b>Procedure's primary table</b> is the table of the first browse on the window, else the form's
+table. When neither exists the user picks a table at run time. After a successful import the window is
+refreshed: <code>ThisWindow.Reset(1)</code> in ABC, which re-reads every browse.</p><pre class="code" data-lang="clarion"><code>CASE POPUP(&#x27;&amp;Import...|E&amp;xport...&#x27;)        ! one-button style
+OF 1
+  IF MIE_ImportExport(&#x27;Customer&#x27;,MIE:Mode:Import)
+    ThisWindow.Reset(1)
+  END
+OF 2
+  MIE_ImportExport(&#x27;Customer&#x27;,MIE:Mode:Export)
+END</code></pre><h2 id="call"><span class="k">Code</span>MyImportExportCall</h2><p>A code template for any embed: a menu item, a button of your own, a process. It writes one call to <code>MIE_ImportExport</code>.</p><div class="tw"><table class=""><thead><tr><th>Prompt</th><th>Symbol</th><th>Kind</th><th>Default</th></tr></thead><tbody><tr><td>Table</td><td><code>%MIECallTableSource</code></td><td>drop: Ask the user at run time | A specific table | Procedure&#x27;s primary table</td><td><code>Ask the user at run time</code></td></tr><tr><td>Specific table</td><td><code>%MIECallTable</code></td><td>from %File</td><td>&mdash;</td></tr><tr><td>Mode</td><td><code>%MIECallMode</code></td><td>drop: Ask the user | Export | Import</td><td><code>Ask the user</code></td></tr><tr><td>Store the result in (optional)</td><td><code>%MIECallResult</code></td><td>FIELD</td><td>&mdash;</td></tr><tr><td>Refresh the window when the result is 1</td><td><code>%MIECallRefresh</code></td><td>CHECK</td><td><code>0</code></td></tr></tbody></table></div><pre class="code" data-lang="clarion"><code>LOC:Done = MIE_ImportExport(&#x27;&#x27;,0)             ! picker, user chooses the mode
+IF LOC:Done
+  ThisWindow.Reset(1)
+END</code></pre><h2 id="embeds"><span class="k">Embeds</span>Embed points</h2><p>All of them sit in the generated module, under <b>MyImportExport</b> in the global embed tree. Per-table embeds are only written when you fill them.</p><div class="tw"><table class=""><thead><tr><th>Embed</th><th>Tree</th><th>Where it runs</th></tr></thead><tbody><tr><td><code>%MIEProcData</code></td><td>MIE_ImportExport procedure › 0 - Local data</td><td>MIE_ImportExport - local data</td></tr><tr><td><code>%MIEProcStart</code></td><td>MIE_ImportExport procedure › 1 - Start of procedure</td><td>MIE_ImportExport - start (pTable / pMode may be changed here)</td></tr><tr><td><code>%MIEAfterFields</code></td><td>MIE_ImportExport procedure › 2 - Fields added, before LoadMap</td><td>MIE_ImportExport - fields added, before the saved mapping is loaded</td></tr><tr><td><code>%MIEBeforeAsk</code></td><td>MIE_ImportExport procedure › 3 - Before Ask</td><td>MIE_ImportExport - before Ask (mapping loaded)</td></tr><tr><td><code>%MIEAfterAsk</code></td><td>MIE_ImportExport procedure › 4 - After Ask</td><td>MIE_ImportExport - after Ask (Result = 1 when something was done)</td></tr><tr><td><code>%MIEHookOpenTable</code></td><td>Hooks › OpenTable</td><td>OpenTable - before the table is opened</td></tr><tr><td><code>%MIEHookCloseTable</code></td><td>Hooks › CloseTable</td><td>CloseTable - before the table is closed</td></tr><tr><td><code>%MIEHookPrimeRecord</code></td><td>Hooks › PrimeRecord</td><td>PrimeRecord - before the new record is primed</td></tr><tr><td><code>%MIEHookCancelPrime</code></td><td>Hooks › CancelPrime</td><td>CancelPrime - before a primed record is cancelled</td></tr><tr><td><code>%MIEHookInsertRecord</code></td><td>Hooks › InsertRecord</td><td>InsertRecord - before the record is added</td></tr><tr><td><code>%MIEHookUpdateRecord</code></td><td>Hooks › UpdateRecord</td><td>UpdateRecord - before the record is written back</td></tr><tr><td><code>%MIEHookFetchRecord</code></td><td>Hooks › FetchRecord</td><td>FetchRecord - before the record is read by its primary key</td></tr><tr><td><code>%MIEHookDeleteRecord</code></td><td>Hooks › DeleteRecord</td><td>DeleteRecord - before a record is deleted (Replace all)</td></tr><tr><td><code>%MIEValidateRecord</code></td><td>Hooks › ValidateRecord › Any table</td><td>ValidateRecord - any table (ReturnValue = 1 skips the row)</td></tr><tr><td><code>%MIEValidateTable</code></td><td>Hooks › ValidateRecord › </td><td>ValidateRecord - this table (ReturnValue = 1 skips the row) <i>(one per table)</i></td></tr><tr><td><code>%MIEExportFilter</code></td><td>Hooks › ExportFilter › Any table</td><td>ExportFilter - any table (ReturnValue = 0 skips the record)</td></tr><tr><td><code>%MIEExportFilterTable</code></td><td>Hooks › ExportFilter › </td><td>ExportFilter - this table (ReturnValue = 0 skips the record) <i>(one per table)</i></td></tr></tbody></table></div><pre class="code" data-lang="clarion"><code>! ValidateRecord - Customer
+IF CUS:Country = &#x27;&#x27; THEN CUS:Country = &#x27;CH&#x27;.
+IF CUS:Email = &#x27;&#x27; THEN ReturnValue = 1.        ! skip this row</code></pre><h2 id="multidll"><span class="k">Recipes</span>Multi-DLL suites</h2><ol class="b">
+<li>Add <code>MyImportExportGlobal</code> to <b>every</b> app. An app without it compiles its own copy of the class.</li>
+<li>In the data DLL (External: none) tick <b>Generate MIE_ImportExport</b>. The class is compiled in and exported, and so is the procedure.</li>
+<li>In the other DLLs and the EXE (External: all, from a DLL) leave it unticked. They import both from the data DLL &mdash; add its <code>.LIB</code> to their projects, as for any DLL procedure.</li>
+<li>Put <code>MIEConvert.exe</code> beside the EXE.</li>
+</ol><div class="tw"><table class=""><thead><tr><th>App</th><th>_MIEDllMode_</th><th>_MIELinkMode_</th></tr></thead><tbody><tr><td>Single EXE, or the data DLL</td><td>0</td><td>1</td></tr><tr><td>DLLs and EXE that use it</td><td>1</td><td>0</td></tr></tbody></table></div><h2 id="regen"><span class="k">Recipes</span>After a dictionary change</h2><p>Regenerate the app that generates <code>MIE_ImportExport</code>. New tables and fields appear in the window; saved mappings for existing tables keep working, and a new field starts out ticked with its own name as the header.</p><h2 id="next3"><span class="k">Template Guide</span>Where to go next</h2><div class="next"><a href="https://claude.ai/artifact/KKSUT9nrRMcaNbsr1qfD1s"><b>Reference &rarr;</b><span>The class, the equates and the helper</span></a><a href="https://claude.ai/artifact/4aSEmtQNKFZ69p6ZrBKFmt"><b>Programmer&#x27;s Guide &rarr;</b><span>How it works, and how to make it do things</span></a><a href="https://claude.ai/artifact/V9ZKEK5fTN6eSfwsXUwbhX"><b>Getting Started &rarr;</b><span>Install it and move your first table</span></a></div>
+    <footer>MyImportExport &mdash; four volumes. The reference is generated from <code>MyImportExport.inc</code>, <code>MyImportExport.tpl</code> / <code>.tpw</code> and the helper&rsquo;s <code>Program.cs</code>, so what it lists is what is in the build.</footer>
+  </div>
+</main>
+</div>
+<script>
+const q = document.getElementById('filter');
+if (q) {
+  const rows = [...document.querySelectorAll('tr.fn')];
+  q.addEventListener('input', () => {
+    const t = q.value.trim().toLowerCase();
+    rows.forEach(r => r.classList.toggle('hide', t && !r.dataset.k.includes(t)));
+    document.querySelectorAll('.tw').forEach(w => {
+      const body = w.querySelector('tbody');
+      if (!body) return;
+      const any = [...body.querySelectorAll('tr')].some(r => !r.classList.contains('hide'));
+      const h = w.previousElementSibling;
+      w.classList.toggle('hide', !any);
+      if (h && h.tagName === 'H3') h.classList.toggle('hide', !any);
+    });
+  });
+}
+/*  Which sidebar entry is lit.  An IntersectionObserver was the wrong
+    instrument: one click crosses several headings at once, every one of them
+    arrives in a single callback, and the last entry processed won - so the
+    highlight settled one or two sections past the one that was clicked, and
+    the page looked as though it had jumped there.  Position is the question,
+    so ask position.  */
+const links = [...document.querySelectorAll('.nav__l a')];
+if (links.length) {
+  const byId  = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const marks = [...document.querySelectorAll('h2[id],h3[id]')].filter(h => byId.has(h.id));
+  const light = a => links.forEach(l => l.classList.toggle('on', l === a));
+  let held = null, holdUntil = 0, queued = false;
+
+  function spy() {
+    queued = false;
+    if (held) { light(held); return; }
+    let cur = marks[0];
+    for (const h of marks) {
+      if (h.getBoundingClientRect().top <= 120) cur = h; else break;
+    }
+    //  the foot of the page belongs to the last section, however short it is
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2)
+      cur = marks[marks.length - 1];
+    if (cur) light(byId.get(cur.id));
+  }
+
+  //  a click owns the highlight until the scroll it started has landed
+  links.forEach(a => a.addEventListener('click', () => {
+    held = a; holdUntil = performance.now() + 700; light(a);
+  }));
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(spy); } };
+  addEventListener('scroll', () => {
+    if (held && performance.now() > holdUntil) held = null;
+    later();
+  }, {passive: true});
+  addEventListener('resize', later);
+  if (marks.length) spy();
+}
+</script>

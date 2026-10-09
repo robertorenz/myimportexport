@@ -1,0 +1,322 @@
+<title>MyImportExport Programmer&#x27;s Guide</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#fbfcfd; --surface:#f1f5f9; --sunken:#e9eff5; --rule:#d6e0ea;
+  --ink:#0f1720; --soft:#4e5f70; --faint:#7d8ea0;
+  --accent:#2f6a9a; --accent-bg:#e4eef6; --accent-rule:#b9d3e6;
+  --clarion:#166f69; --clarion-bg:#e2f1ef;
+  --warn:#8a5a12; --warn-bg:#f7eeda;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0d131a; --surface:#151d26; --sunken:#111922; --rule:#25313d;
+    --ink:#e2eaf2; --soft:#9aabbc; --faint:#6f8092;
+    --accent:#6fadde; --accent-bg:#152738; --accent-rule:#28455f;
+    --clarion:#4fb5ab; --clarion-bg:#102a29;
+    --warn:#d8a545; --warn-bg:#2b2413;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0d131a; --surface:#151d26; --sunken:#111922; --rule:#25313d;
+  --ink:#e2eaf2; --soft:#9aabbc; --faint:#6f8092;
+  --accent:#6fadde; --accent-bg:#152738; --accent-rule:#28455f;
+  --clarion:#4fb5ab; --clarion-bg:#102a29;
+  --warn:#d8a545; --warn-bg:#2b2413;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,serif; font-size:16px; line-height:1.62;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,.ui{font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+a{color:var(--accent)}
+.wrap{display:grid; grid-template-columns:270px minmax(0,1fr); align-items:start}
+.side{position:sticky; top:0; height:100vh; overflow-y:auto; padding:24px 20px 60px;
+  border-right:1px solid var(--rule); background:var(--surface)}
+.brand{font-family:"IBM Plex Sans",sans-serif; font-weight:600; font-size:15px; margin:0 0 14px}
+.brand b{color:var(--accent)}
+/* ---- the four volumes ---- */
+.vols{list-style:none; margin:0 0 18px; padding:0; display:flex; flex-direction:column; gap:3px;
+  border-bottom:1px solid var(--rule); padding-bottom:16px}
+.vols a{display:block; padding:7px 10px; border-radius:6px; text-decoration:none;
+  font:500 13px/1.35 "IBM Plex Sans",sans-serif; color:var(--soft); border:1px solid transparent}
+.vols a:hover{background:var(--sunken); color:var(--ink)}
+.vols a.here{background:var(--accent-bg); border-color:var(--accent-rule); color:var(--accent)}
+.vols small{display:block; font:400 11px/1.35 "IBM Plex Sans",sans-serif; color:var(--faint);
+  margin-top:2px}
+.vols a.here small{color:var(--accent)}
+.filter{width:100%; margin:0 0 16px; padding:7px 10px; font:13px/1.4 "IBM Plex Sans",sans-serif;
+  color:var(--ink); background:var(--paper); border:1px solid var(--rule); border-radius:6px}
+.filter:focus{outline:2px solid var(--accent); outline-offset:1px}
+.nav__g{font:600 10.5px/1 "IBM Plex Sans",sans-serif; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--faint); margin:18px 0 8px}
+.nav__l{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1px}
+.nav__l a{display:block; padding:4px 8px; border-radius:5px; text-decoration:none; color:var(--soft);
+  font:400 13.5px/1.45 "IBM Plex Sans",sans-serif}
+.nav__l a:hover{background:var(--sunken); color:var(--ink)}
+.nav__l a.on{background:var(--accent-bg); color:var(--accent); font-weight:500}
+.main{padding:0 0 120px; min-width:0}
+.inner{max-width:980px; padding:0 40px}
+.hero{padding:52px 40px 30px; border-bottom:1px solid var(--rule);
+  background:linear-gradient(180deg,var(--accent-bg),transparent)}
+.hero .inner{padding:0}
+.eyebrow{font:600 11px/1 "IBM Plex Sans",sans-serif; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accent); margin:0 0 12px}
+h1{font-size:37px; line-height:1.1; margin:0 0 10px; letter-spacing:-.015em; text-wrap:balance}
+.sub{font-size:17px; color:var(--soft); margin:0 0 18px; max-width:62ch}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{font:500 11.5px/1 "IBM Plex Sans",sans-serif; padding:6px 10px; border-radius:99px;
+  border:1px solid var(--rule); background:var(--paper); color:var(--soft)}
+.chip b{color:var(--ink); font-weight:600}
+h2{font-size:26px; margin:60px 0 6px; letter-spacing:-.01em; scroll-margin-top:18px; text-wrap:balance}
+h2 .k{font:600 10.5px/1 "IBM Plex Sans",sans-serif; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--accent); display:block; margin-bottom:9px}
+h3{font-size:17.5px; margin:36px 0 10px; scroll-margin-top:18px}
+h4{font-size:14.5px; margin:24px 0 6px; color:var(--soft); font-weight:600}
+p{margin:0 0 14px; max-width:70ch}
+.lead{color:var(--soft); max-width:70ch}
+ul.b,ol.b{max-width:70ch; padding-left:20px; margin:0 0 16px}
+ul.b li,ol.b li{margin:0 0 7px}
+.code{background:var(--sunken); border:1px solid var(--rule); border-left:3px solid var(--accent-rule);
+  border-radius:0 7px 7px 0; padding:14px 16px; overflow-x:auto; margin:0 0 18px;
+  font-size:12.9px; line-height:1.62; position:relative}
+.code code{white-space:pre; color:var(--ink)}
+.code::after{content:attr(data-lang); position:absolute; top:0; right:0; padding:3px 9px;
+  font:500 9.5px/1 "IBM Plex Sans",sans-serif; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--faint); background:var(--surface); border-left:1px solid var(--rule);
+  border-bottom:1px solid var(--rule); border-radius:0 0 0 6px}
+.code--use{margin:7px 0 2px; border-left-color:var(--clarion); background:var(--paper);
+  font-size:12.4px; padding:9px 12px}
+.code--use::after{content:'Clarion'; color:var(--clarion)}
+p code,li code,td code{background:var(--sunken); border:1px solid var(--rule); border-radius:4px;
+  padding:.06em .34em; font-size:.86em}
+.tw{overflow-x:auto; margin:0 0 20px; border:1px solid var(--rule); border-radius:8px;
+  background:var(--paper)}
+table{border-collapse:collapse; width:100%; font-size:13.5px;
+  font-family:"IBM Plex Sans",sans-serif}
+th{text-align:left; font-weight:600; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--faint); padding:9px 14px; border-bottom:1px solid var(--rule); background:var(--surface)}
+td{padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top}
+tr:last-child td{border-bottom:0}
+.fns .fn__n{width:210px; white-space:nowrap}
+.fns .fn__n code{font-size:12.6px; color:var(--accent); font-weight:500; background:none;
+  border:0; padding:0}
+.fns .fn__s code{font-size:12.4px; color:var(--soft); background:none; border:0; padding:0;
+  white-space:pre-wrap}
+.fn__d{margin:5px 0 0; font-family:"IBM Plex Serif",serif; font-size:13.5px; color:var(--ink);
+  max-width:74ch}
+.ord{margin-left:7px; font:500 10px/1 "IBM Plex Mono",monospace; color:var(--faint);
+  border:1px solid var(--rule); border-radius:4px; padding:2px 4px; vertical-align:1px}
+.eq td:first-child code{color:var(--accent); background:none; border:0; padding:0}
+.eq .v{font-variant-numeric:tabular-nums; color:var(--soft)}
+.note{border:1px solid var(--rule); border-left:3px solid var(--accent); background:var(--surface);
+  border-radius:0 7px 7px 0; padding:13px 16px; margin:0 0 18px; max-width:74ch}
+.note--warn{border-left-color:var(--warn); background:var(--warn-bg)}
+.note--cla{border-left-color:var(--clarion); background:var(--clarion-bg)}
+.note__t{font:600 12px/1.3 "IBM Plex Sans",sans-serif; letter-spacing:.03em; margin:0 0 5px;
+  text-transform:uppercase; color:var(--soft)}
+.note--warn .note__t{color:var(--warn)} .note--cla .note__t{color:var(--clarion)}
+.note__b p{margin:0 0 8px; font-size:14.5px} .note__b p:last-child{margin:0}
+.stack{display:flex; flex-direction:column; gap:9px; margin:0 0 22px; max-width:640px}
+.layer{border:1px solid var(--rule); border-radius:8px; padding:12px 15px; background:var(--surface);
+  display:grid; grid-template-columns:118px 1fr; gap:14px; align-items:baseline}
+.layer b{font:600 11px/1.4 "IBM Plex Sans",sans-serif; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--accent)}
+.layer.cla b{color:var(--clarion)}
+.layer p{margin:0; font-size:14px; color:var(--soft); max-width:none}
+.arrow{text-align:center; color:var(--faint); font-size:12px; margin:-4px 0}
+/* ---- where to next ---- */
+.next{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px;
+  margin:26px 0 0}
+.next a{display:block; padding:14px 16px; border:1px solid var(--rule); border-radius:9px;
+  background:var(--surface); text-decoration:none}
+.next a:hover{border-color:var(--accent-rule); background:var(--accent-bg)}
+.next b{display:block; font:600 14px/1.3 "IBM Plex Sans",sans-serif; color:var(--accent);
+  margin-bottom:3px}
+.next span{font:400 13px/1.45 "IBM Plex Serif",serif; color:var(--soft)}
+.hide{display:none !important}
+footer{margin-top:70px; padding:22px 40px 0; border-top:1px solid var(--rule); color:var(--faint);
+  font:400 13px/1.6 "IBM Plex Sans",sans-serif}
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr}
+  .side{position:static; height:auto; border-right:0; border-bottom:1px solid var(--rule)}
+  .inner,.hero{padding-left:22px; padding-right:22px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+</style>
+<div class="wrap">
+<nav class="side">
+  <p class="brand"><b>MyImportExport</b></p>
+<ul class="vols"><li><a href="https://claude.ai/artifact/V9ZKEK5fTN6eSfwsXUwbhX">1. Getting Started<small>Install it and move your first table</small></a></li><li><a href="#" class="here">2. Programmer&#x27;s Guide<small>How it works, and how to make it do things</small></a></li><li><a href="https://claude.ai/artifact/GNowfmcedV2PeR2qqoVWAp">3. Template Guide<small>Every template, tab, prompt and embed</small></a></li><li><a href="https://claude.ai/artifact/KKSUT9nrRMcaNbsr1qfD1s">4. Reference<small>The class, the equates and the helper</small></a></li></ul><p class="nav__g">Concepts</p><ul class="nav__l"><li><a href="#parts">How the parts fit</a></li><li><a href="#tsv">The intermediate file</a></li><li><a href="#fields">Fields and columns</a></li><li><a href="#automap">Auto Map</a></li><li><a href="#modes">Import modes</a></li><li><a href="#values">Dates, times and numbers</a></li></ul><p class="nav__g">Formats</p><ul class="nav__l"><li><a href="#formats">What each format does</a></li><li><a href="#excel">Excel sheets</a></li></ul><p class="nav__g">How-to</p><ul class="nav__l"><li><a href="#saved">Saved mappings</a></li><li><a href="#headless">Running without a window</a></li><li><a href="#derive">Rules and custom table I/O</a></li><li><a href="#results">Errors and results</a></li></ul><p class="nav__g">Clarion notes</p><ul class="nav__l"><li><a href="#notes">Things the language does to you</a></li><li><a href="#n-any">An ANY in a queue is shared</a></li><li><a href="#n-slice">Zero-length slices</a></li><li><a href="#n-time">@T4 pads with a space</a></li><li><a href="#n-run">RUN and RUNCODE</a></li><li><a href="#n-dos">The class needs the DOS driver</a></li><li><a href="#n-ansi">The temp file is ANSI</a></li><li><a href="#n-abc">ABC TryInsert renumbers</a></li><li><a href="#n-tpl">Template pitfalls</a></li></ul><ul class="nav__l"><li><a href="#next2">Where to go next</a></li></ul>
+</nav>
+<main class="main">
+  <header class="hero"><div class="inner">
+    <p class="eyebrow">Volume 2</p>
+    <h1>Programmer&#x27;s Guide</h1>
+    <p class="sub">How an import and an export actually run, what each format does, and how to bend the class to your own rules.</p>
+    <div class="chips"><span class="chip"><b>4</b> import modes</span><span class="chip"><b>6</b> formats</span><span class="chip"><b>12</b> virtual hooks</span></div>
+  </div></header>
+  <div class="inner"><h2 id="parts"><span class="k">Concepts</span>How the parts fit</h2><p>The class never reads an Excel or JSON file itself. Every run goes through one plain text
+file in the Windows temp folder, and <code>MIEConvert.exe</code> turns that file into the real format
+or back. The class only knows how to read and write that one text file, and the helper only knows
+files &mdash; neither knows about the other's job.</p><div class="tw"><table class=""><thead><tr><th>Step</th><th>Export</th><th>Import</th></tr></thead><tbody><tr><td>1</td><td>The class walks the table (in primary key order) and writes the selected fields to a temp file.</td><td>The class runs <code>MIEConvert import</code>, which writes the source file as a temp file.</td></tr><tr><td>2</td><td>It runs <code>MIEConvert export</code>, which writes the CSV, JSON, XML or Excel file.</td><td>The class reads the temp file row by row, fills the record buffer and inserts or updates.</td></tr><tr><td>3</td><td>The temp file is deleted.</td><td>The temp file is deleted.</td></tr></tbody></table></div><h3 id="tsv">The intermediate file</h3><p>Tab separated, one record per line, CRLF line ends, Windows ANSI. Inside a value only four
+characters are escaped: <code>\\</code>, <code>\t</code>, <code>\r</code> and <code>\n</code>. The first
+line holds the column names. On export a second line holds one type code per column &mdash;
+<code>S</code> string, <code>N</code> number, <code>D</code> date, <code>T</code> time &mdash; so the helper
+can write real Excel number, date and time cells.</p><pre class="code" data-lang="tsv"><code>Id	Name	Since	Alarm	Balance
+N	S	D	T	N
+1	Smith, John	2020-01-02	08:30:15	1234.56
+2	Say &quot;Hi&quot; \ttab\\back			-42.5
+3	Line1\r\nLine2	2024-02-29	23:59:59	0</code></pre><h2 id="fields"><span class="k">Concepts</span>Fields and columns</h2><p>Each <code>AddField</code> call adds one row to the <code>Fields</code> queue: the field's label,
+its default column name, its dictionary type and picture, and an <code>ANY</code> reference to the field
+itself. Everything the window shows and everything Export and Import do is driven by that queue.</p><div class="tw"><table class=""><thead><tr><th>Queue field</th><th>Used for</th></tr></thead><tbody><tr><td><code>Selected</code></td><td>Export: the column is written. Import: the field is filled.</td></tr><tr><td><code>Order</code></td><td>Export column order. Move Up / Down swaps it; the queue is kept sorted on it.</td></tr><tr><td><code>Header</code></td><td>Export: the column name written. Starts as the field's name.</td></tr><tr><td><code>SourceName</code></td><td>Import: the name of the source column mapped to this field.</td></tr><tr><td><code>SourceCol</code></td><td>Import: that column's position in the current file, worked out again by <code>ResolveMap</code> on every run.</td></tr><tr><td><code>IsKey</code></td><td>Part of the primary key: Add-or-update and Update-only find records through it.</td></tr></tbody></table></div><p>Mapping is kept by <b>name</b>, not by position, so a file whose columns come in a different order next month still imports correctly.</p><h3 id="automap">Auto Map</h3><p>Auto Map compares names after removing the prefix (<code>CUS:</code>), case, spaces,
+underscores, dashes, dots and brackets. <code>Cust Number</code>, <code>CUST_NUMBER</code> and
+<code>CUS:CustNumber</code> all match. A field matches on its name, its label or its current header.
+When the file has no header row, the columns are called <code>Column1</code>, <code>Column2</code> ... and
+Auto Map pairs them with the fields by position.</p><h2 id="modes"><span class="k">Concepts</span>Import modes</h2><div class="tw"><table class=""><thead><tr><th>Mode</th><th>Equate</th><th>What happens to each row</th></tr></thead><tbody><tr><td>Add new records</td><td><code>MIE:Import:Add</code></td><td>Inserted. A duplicate key is counted as failed.</td></tr><tr><td>Add or update</td><td><code>MIE:Import:Upsert</code></td><td>The primary key from the row is looked up. Found: the mapped fields are written over the record and it is updated &mdash; unmapped fields keep their values. Not found: inserted.</td></tr><tr><td>Update existing only</td><td><code>MIE:Import:Update</code></td><td>As above, but a row with no matching record is skipped.</td></tr><tr><td>Replace all records</td><td><code>MIE:Import:Replace</code></td><td>Every record of the table is deleted first, then each row is inserted.</td></tr></tbody></table></div><p>The two update modes need the primary key: the table must have one, and its fields must be
+mapped. When no key field is mapped, new records are <i>primed</i> &mdash; under ABC that gives them the
+next auto-increment number. When the key <i>is</i> mapped, the imported key values are kept.</p><h2 id="values"><span class="k">Concepts</span>Dates, times and numbers</h2><div class="tw"><table class=""><thead><tr><th>Field</th><th>Exported as</th><th>Imported from</th></tr></thead><tbody><tr><td><code>DATE</code>, or a number with an <code>@D</code> picture</td><td><code>yyyy-mm-dd</code>; an Excel date cell</td><td><code>yyyy-mm-dd</code> (also with <code>/</code> or <code>.</code>, and with a time after it), <code>yyyymmdd</code>, a Clarion date number, or text in the field's own picture</td></tr><tr><td><code>TIME</code>, or a number with an <code>@T</code> picture</td><td><code>hh:mm:ss</code>; an Excel time cell</td><td><code>hh:mm[:ss]</code>, a date-time (the time part is used), a Clarion time number, or the picture</td></tr><tr><td>Numbers</td><td>Plain, with a <code>.</code> decimal point; an Excel number</td><td>Any number; <code>true/yes/y</code> = 1, <code>false/no/n</code> = 0; otherwise the digits are picked out</td></tr><tr><td>Strings</td><td>As stored, trailing spaces removed</td><td>As is</td></tr></tbody></table></div><p>Zero dates and times export as empty cells and import back as zero. With <b>Format with dictionary pictures</b> (<code>UsePictures</code>) dates, times and numbers are written exactly as your program shows them, as text.</p><h2 id="formats"><span class="k">Formats</span>What each format does</h2><div class="tw"><table class=""><thead><tr><th>Format</th><th>Import</th><th>Export</th></tr></thead><tbody><tr><td>CSV</td><td>Quoted fields, doubled quotes, line breaks inside quotes. Delimiter of your choice. Encoding detected (BOM, UTF-8, else ANSI).</td><td>Quotes only where needed. UTF-8 with BOM, so Excel shows accents correctly.</td></tr><tr><td>TSV</td><td>As CSV with a tab.</td><td>As CSV with a tab.</td></tr><tr><td>JSON</td><td>An array of objects: the columns are every key seen, in first-seen order. Nested objects become <code>parent.child</code>; arrays become JSON text. <code>true</code>/<code>false</code> become 1/0.</td><td>An array of objects; numbers unquoted, empty numbers null. Optionally wrapped: <code>{"name":[...]}</code>.</td></tr><tr><td>XML</td><td>The repeating row element is found automatically, or named. Columns are the attributes and child elements.</td><td><code>&lt;Data&gt;&lt;Row&gt;&lt;Name&gt;...</code>, names of your choice. Invalid characters in names become <code>_</code>.</td></tr><tr><td>XLSX</td><td>Any sheet. Shared and inline strings, dates, booleans, cached formula values, sparse rows.</td><td>Real number, date and time cells, bold header. Can add or replace one sheet in an existing workbook.</td></tr><tr><td>XLS</td><td>Excel 97&ndash;2003 workbooks, any sheet.</td><td>A real BIFF8 workbook. Up to 65,536 rows and 256 columns.</td></tr></tbody></table></div><h3 id="excel">Excel sheets</h3><p>On import, <code>LoadSheets</code> lists the sheets and <code>SheetName</code> picks one (blank =
+the first). Excel's first non-empty row is the header and completely empty rows are skipped. On export,
+<code>SheetName</code> names the new sheet. With <code>ReplaceSheet</code> on an existing .xlsx, only that
+sheet is added or replaced and every other sheet keeps its content and formatting &mdash; so one workbook can
+collect several tables, one per sheet.</p><h2 id="saved"><span class="k">How-to</span>Saved mappings</h2><p>After every successful run the window calls <code>SaveMap</code>, and the generated procedure calls <code>LoadMap</code> before it opens the window. Each field line holds <i>selected | order | header | source column</i>:</p><pre class="code" data-lang="ini"><code>[MIE_Customer]
+Mode=2
+Format=XLSX
+FileName=C:\exchange\customers.xlsx
+SheetName=Customers
+HasHeader=1
+ImportMode=2
+F_CUS:Id=1|1|Id|Customer No
+F_CUS:Name=1|2|Name|Customer name
+F_CUS:Since=0|3|Since|</code></pre><h2 id="headless"><span class="k">How-to</span>Running without a window</h2><p>Everything the window does is a property and a method call, so scheduled jobs and services use the same class. Call <code>LoadColumns</code> and <code>AutoMap</code> (or <code>MapField</code>) before <code>Import</code>: the mapping is by name, and the class has to see the header first.</p><pre class="code" data-lang="clarion"><code>MIE        MyImportExportClass
+  CODE
+  MIE.Init()
+  MIE.Silent  = 1                         ! no message boxes
+  MIE.IniFile = &#x27;&#x27;                        ! do not touch the INI
+  MIE.SetTable(Customer, &#x27;Customer&#x27;, CUS:KeyId)
+  MIE.AddField(&#x27;CUS:Id&#x27;,   &#x27;Id&#x27;,   &#x27;LONG&#x27;,   &#x27;@n_10&#x27;, CUS:Id, 1)
+  MIE.AddField(&#x27;CUS:Name&#x27;, &#x27;Name&#x27;, &#x27;STRING&#x27;, &#x27;@s40&#x27;,  CUS:Name)
+
+  ! nightly export
+  MIE.Format    = &#x27;XLSX&#x27;
+  MIE.FileName  = &#x27;c:\exchange\customers.xlsx&#x27;
+  MIE.SheetName = &#x27;Customers&#x27;
+  IF MIE.Export() THEN Log(&#x27;export: &#x27; &amp; MIE.ErrorText).
+
+  ! morning import of the changes
+  MIE.Format     = &#x27;CSV&#x27;
+  MIE.FileName   = &#x27;c:\exchange\changes.csv&#x27;
+  MIE.ImportMode = MIE:Import:Upsert
+  MIE.LoadColumns()                       ! read the header row ...
+  MIE.AutoMap()                           ! ... and map it by name
+  IF MIE.Import()
+    Log(&#x27;import: &#x27; &amp; MIE.ErrorText)
+  ELSE
+    Log(MIE.ResultText())
+  END
+  MIE.Kill()</code></pre><h2 id="derive"><span class="k">How-to</span>Rules and custom table I/O</h2><p>Every read and write on your table goes through a virtual method, so you change behaviour by
+deriving. <code>ValidateRecord</code> runs after the row is in the record buffer and before it is written
+&mdash; return non-zero to skip the row, or fix values on the way in. <code>ExportFilter</code> decides
+record by record what is exported.</p><pre class="code" data-lang="clarion"><code>MIE        CLASS(MyImportExportClass)
+ValidateRecord PROCEDURE(),BYTE,DERIVED
+InsertRecord   PROCEDURE(),BYTE,DERIVED
+           END
+
+MIE.ValidateRecord PROCEDURE()
+  CODE
+  IF CUS:Email = &#x27;&#x27; THEN RETURN 1.        ! skip the row
+  CUS:Email = LOWER(CUS:Email)            ! clean it up on the way in
+  RETURN 0
+
+MIE.InsertRecord PROCEDURE()
+  CODE
+  CUS:CreatedOn = TODAY()
+  RETURN PARENT.InsertRecord()</code></pre><p>The template does exactly this for you, routing the I/O through ABC's <code>Access:</code> and <code>Relate:</code> objects and giving you embed points in each method. See the Template Guide.</p><h2 id="results"><span class="k">How-to</span>Errors and results</h2><p><code>Export</code>, <code>Import</code>, <code>LoadColumns</code> and <code>LoadSheets</code>
+return 0 when they ran. Otherwise <code>ErrorText</code> says why &mdash; including the helper's own
+message, such as a sheet that does not exist or an .xls that is too big. A run that worked can still have
+refused rows: check <code>Failed</code> and <code>LastFailure</code>. <code>ResultText</code> puts it all in
+one message.</p><div class="tw"><table class=""><thead><tr><th>Counter</th><th>Export</th><th>Import</th></tr></thead><tbody><tr><td><code>Processed</code></td><td>records written</td><td>data rows read</td></tr><tr><td><code>Added</code></td><td>&mdash;</td><td>records inserted</td></tr><tr><td><code>Updated</code></td><td>&mdash;</td><td>records updated</td></tr><tr><td><code>Skipped</code></td><td>records ExportFilter left out</td><td>rows ValidateRecord refused, and Update-only rows with no match</td></tr><tr><td><code>Failed</code></td><td>&mdash;</td><td>inserts or updates that returned an error</td></tr></tbody></table></div><h2 id="notes"><span class="k">Clarion notes</span>Things the language does to you</h2><p>Behaviour that belongs to Clarion rather than to this library, found the hard way while building it. Each one cost real time; they are here so they do not cost it again.</p><h3 id="n-any">An ANY in a queue is shared</h3><p>The field queue holds an <code>ANY</code> reference per field. Setting
+<code>Q.Ref &amp;= NULL</code> before <code>CLEAR(Q)</code> to add the next entry changed the entries already
+in the queue: every field ended up pointing at the last one added, and the first export wrote the same
+value into every column. Do what ABC's <code>FieldPairsClass.AddPair</code> does &mdash; <code>CLEAR(Q)</code>,
+then <code>&amp;=</code>, then <code>ADD</code> &mdash; and NULL the references only when tearing the queue
+down.</p><h3 id="n-slice">Zero-length slices</h3><p><code>S[1 : 0]</code> is not a safe empty string. Wherever a line may be empty the class passes
+one byte more than the line (<code>LineBuf[1 : LineLen + 1]</code>) and the callee subtracts it, and the
+line buffer always keeps one spare byte so that slice stays inside it.</p><h3 id="n-time">@T4 pads with a space</h3><p><code>FORMAT(t, @T4)</code> gives <code>&nbsp;8:30:15</code> with a leading space. ISO times need <code>@T04</code>, which zero-pads to <code>08:30:15</code>.</p><h3 id="n-run">RUN and RUNCODE</h3><p><code>RUN(cmd, 1)</code> waits for the helper and <code>RUNCODE()</code> returns its exit code.
+<code>RUN</code> starts the process directly &mdash; no command shell &mdash; so a <code>;</code> or
+<code>|</code> in a quoted argument is passed through untouched, and the helper is built as a windowless exe
+so nothing flashes on screen. Its error text comes back through a file
+(<code>--errfile</code>), since there is no console to read.</p><h3 id="n-dos">The class needs the DOS driver</h3><p>The temp file is read and written in 32 KB blocks through a <code>DRIVER('DOS')</code> file. A project without the DOS driver fails at link time with <i>Unresolved External DOS</i>; the global extension adds the driver for you.</p><h3 id="n-ansi">The temp file is ANSI</h3><p>Clarion strings are single-byte, so the intermediate file uses the Windows ANSI code page. Characters the code page cannot hold arrive as <code>?</code>. The helper reads UTF-8 and UTF-16 sources fine; it is only the hand-over to Clarion that is limited.</p><h3 id="n-abc">ABC TryInsert renumbers</h3><p>On a table with an auto-increment key, ABC's <code>TryInsert</code> always gives the record the
+next number, throwing away an imported key. The generated hooks therefore insert with a plain
+<code>ADD</code> when the key column is mapped, and through <code>TryInsert</code> (after
+<code>PrimeRecord</code>) when it is not. Likewise <code>Relate:</code> deletes cascade through the
+dictionary's relations; <i>Replace all</i> deletes through <code>Access:</code> unless you choose otherwise.</p><h3 id="n-tpl">Template pitfalls</h3><ul class="b">
+<li><code>#IF</code> treats the string <code>'0'</code> as true. Compare explicitly, or keep flags numeric.</li>
+<li>A <code>#GROUP</code> swallows everything after it, so all groups live in the .tpw, included at the very end of the .tpl.</li>
+<li>The registry finds template files through the redirection file. Registering straight from a repository folder fails with <i>Could not open include file</i>; install into <code>accessory\template\win</code> first.</li>
+<li><code>#?</code> lines are written in column 1 unless indented inside the line itself.</li>
+</ul><h2 id="next2"><span class="k">Programmer's Guide</span>Where to go next</h2><div class="next"><a href="https://claude.ai/artifact/GNowfmcedV2PeR2qqoVWAp"><b>Template Guide &rarr;</b><span>Every template, tab, prompt and embed</span></a><a href="https://claude.ai/artifact/KKSUT9nrRMcaNbsr1qfD1s"><b>Reference &rarr;</b><span>The class, the equates and the helper</span></a><a href="https://claude.ai/artifact/V9ZKEK5fTN6eSfwsXUwbhX"><b>Getting Started &rarr;</b><span>Install it and move your first table</span></a></div>
+    <footer>MyImportExport &mdash; four volumes. The reference is generated from <code>MyImportExport.inc</code>, <code>MyImportExport.tpl</code> / <code>.tpw</code> and the helper&rsquo;s <code>Program.cs</code>, so what it lists is what is in the build.</footer>
+  </div>
+</main>
+</div>
+<script>
+const q = document.getElementById('filter');
+if (q) {
+  const rows = [...document.querySelectorAll('tr.fn')];
+  q.addEventListener('input', () => {
+    const t = q.value.trim().toLowerCase();
+    rows.forEach(r => r.classList.toggle('hide', t && !r.dataset.k.includes(t)));
+    document.querySelectorAll('.tw').forEach(w => {
+      const body = w.querySelector('tbody');
+      if (!body) return;
+      const any = [...body.querySelectorAll('tr')].some(r => !r.classList.contains('hide'));
+      const h = w.previousElementSibling;
+      w.classList.toggle('hide', !any);
+      if (h && h.tagName === 'H3') h.classList.toggle('hide', !any);
+    });
+  });
+}
+/*  Which sidebar entry is lit.  An IntersectionObserver was the wrong
+    instrument: one click crosses several headings at once, every one of them
+    arrives in a single callback, and the last entry processed won - so the
+    highlight settled one or two sections past the one that was clicked, and
+    the page looked as though it had jumped there.  Position is the question,
+    so ask position.  */
+const links = [...document.querySelectorAll('.nav__l a')];
+if (links.length) {
+  const byId  = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const marks = [...document.querySelectorAll('h2[id],h3[id]')].filter(h => byId.has(h.id));
+  const light = a => links.forEach(l => l.classList.toggle('on', l === a));
+  let held = null, holdUntil = 0, queued = false;
+
+  function spy() {
+    queued = false;
+    if (held) { light(held); return; }
+    let cur = marks[0];
+    for (const h of marks) {
+      if (h.getBoundingClientRect().top <= 120) cur = h; else break;
+    }
+    //  the foot of the page belongs to the last section, however short it is
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2)
+      cur = marks[marks.length - 1];
+    if (cur) light(byId.get(cur.id));
+  }
+
+  //  a click owns the highlight until the scroll it started has landed
+  links.forEach(a => a.addEventListener('click', () => {
+    held = a; holdUntil = performance.now() + 700; light(a);
+  }));
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(spy); } };
+  addEventListener('scroll', () => {
+    if (held && performance.now() > holdUntil) held = null;
+    later();
+  }, {passive: true});
+  addEventListener('resize', later);
+  if (marks.length) spy();
+}
+</script>

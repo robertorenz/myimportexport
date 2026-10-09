@@ -7,8 +7,8 @@ $tpl  = Join-Path $ClarionRoot 'accessory\template\win'
 $lib  = Join-Path $ClarionRoot 'accessory\libsrc\win'
 $bin  = Join-Path $ClarionRoot 'accessory\bin'
 foreach ($d in $tpl, $lib, $bin) { New-Item -ItemType Directory -Force $d | Out-Null }
-Copy-Item "$here\template\MyImportExport.tpl", "$here\template\MyImportExport.tpw" $tpl -Force
-Copy-Item "$here\libsrc\MyImportExport.inc", "$here\libsrc\MyImportExport.clw" $lib -Force
+Copy-Item "$here\template\win\*" -Include *.tpl, *.tpw $tpl -Force
+Copy-Item "$here\libsrc\win\*" -Include *.clw, *.inc, *.c $lib -Force
 Copy-Item "$here\bin\MIEConvert.exe" $bin -Force
 Write-Host "Copied template -> $tpl"
 Write-Host "Copied class    -> $lib"

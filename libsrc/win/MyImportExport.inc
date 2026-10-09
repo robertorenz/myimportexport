@@ -122,7 +122,7 @@ LoadMap                PROCEDURE
 ResultText             PROCEDURE,STRING
 ResolveMap             PROCEDURE,LONG,PROC                ! re-links SourceName -> SourceCol
 GetValue               PROCEDURE(LONG pColumn),STRING     ! import: value of column in current row
-ExeFolder              PROCEDURE,STRING                   ! folder of the running exe, with trailing \r
+ExeFolder              PROCEDURE,STRING                   ! folder of the running exe, with a trailing backslash
 ResetCounters          PROCEDURE
 ! --- virtual hooks ------------------------------------------------------
 OpenTable              PROCEDURE,BYTE,VIRTUAL

@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 $root  = Split-Path $PSScriptRoot -Parent
 $build = Join-Path $PSScriptRoot '.build'
 New-Item -ItemType Directory -Force $build | Out-Null
-Copy-Item "$root\libsrc\*" $build -Force
+Copy-Item "$root\libsrc\win\*" $build -Force
 Copy-Item "$PSScriptRoot\MIETest.clw" $build -Force
 if (Test-Path "$root\bin\MIEConvert.exe") { Copy-Item "$root\bin\MIEConvert.exe" $build -Force }
 $clw = Join-Path $build 'MIETest.clw'

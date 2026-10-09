@@ -6,9 +6,9 @@ tick the columns you want and match each source column to a table field. Mapping
 table, so the next run is one click.
 
 ```
- AppGen template (template\MyImportExport.tpl/.tpw)
+ AppGen template (template\win\MyImportExport.tpl/.tpw)
    └─ generates MIE_ImportExport(table, mode) with AddField() calls for every dictionary table
-        └─ MyImportExportClass (libsrc\MyImportExport.inc/.clw)
+        └─ MyImportExportClass (libsrc\win\MyImportExport.inc/.clw)
              ├─ mapping window: format, file, sheet, columns, field alignment, import mode
              └─ RUN()s MIEConvert.exe (bin\, single 110 KB exe, .NET Framework 4.8)
                   csv / tsv / json / xml / xls / xlsx  <->  intermediate tab file
@@ -17,13 +17,26 @@ table, so the next run is one click.
 Excel does **not** need to be installed: MIEConvert reads and writes .xlsx (OpenXML) and
 .xls (BIFF8) itself.
 
+## Manual
+
+Four volumes, generated from the sources by `python docs\build-docs.py`:
+
+| Volume | For |
+|---|---|
+| [1. Getting Started](https://claude.ai/artifact/V9ZKEK5fTN6eSfwsXUwbhX) | install, buttons on a browse, first export and import, the demos |
+| [2. Programmer's Guide](https://claude.ai/artifact/4aSEmtQNKFZ69p6ZrBKFmt) | how a run works, formats, import modes, saved mappings, running without a window, Clarion notes |
+| [3. Template Guide](https://claude.ai/artifact/GNowfmcedV2PeR2qqoVWAp) | every template, tab, prompt and embed point, and what gets generated |
+| [4. Reference](https://claude.ai/artifact/KKSUT9nrRMcaNbsr1qfD1s) | every class property and method with a worked example, equates, queue types, `MIEConvert` options |
+
+The same pages are in `docs\*.html`.
+
 ## Install
 
 ```powershell
 pwsh .\install.ps1                 # or -ClarionRoot D:\clarion12
 ```
 
-This copies the template to `accessory\template\win`, the class to `accessory\libsrc\win` and
+This copies `template\win\*.tpl/.tpw` to `accessory\template\win`, `libsrc\win\*.clw/.inc/.c` to `accessory\libsrc\win` and
 `MIEConvert.exe` to `accessory\bin`, then registers the template. Restart the IDE if it is open.
 
 ## Use it in an app
@@ -112,14 +125,14 @@ Derive the class to change table I/O (`OpenTable`, `InsertRecord`, `UpdateRecord
 
 | Folder | Contents |
 |---|---|
-| `template\` | `MyImportExport.tpl`, `MyImportExport.tpw` |
-| `libsrc\` | `MyImportExport.inc`, `MyImportExport.clw` |
+| `template\win\` | `MyImportExport.tpl`, `MyImportExport.tpw` |
+| `libsrc\win\` | class sources: `MyImportExport.inc`, `MyImportExport.clw` (any `.clw`, `.inc`, `.c` go here) |
 | `bin\` | `MIEConvert.exe` (built) |
 | `helper\MIEConvert\` | C# source of the helper (`dotnet build -c Release`), see `helper\README.md` |
 | `helper\tests\` | helper round-trip tests (`python run_tests.py`, needs openpyxl, xlrd, xlwt) |
 | `test\` | headless Clarion test: `pwsh test\build.ps1` exports and re-imports every format |
 | `example\` | demo dictionary (`.dctx`) and app (`.txa`) using all three templates |
-| `docs\DESIGN.md` | contract between the template, the class and the helper |
+| `docs\` | the manual (`build-docs.py` builds the four volumes from the sources), `DESIGN.md` (contract between template, class and helper) |
 
 ## Tests
 
