@@ -1,0 +1,585 @@
+#!============================================================================
+#! MyImportExport.tpw - groups for MyImportExport.tpl
+#! Everything in here is a #GROUP; it is #INCLUDEd at the very end of the .tpl
+#!============================================================================
+#!
+#!----------------------------------------------------------------------------
+#! Read MyImportExport.inc (found through the redirection file, as the CapeSoft
+#! class reader does - cape02.tpw %ReadIncludeFilePR) to learn
+#!   - whether the header derives _MIELinkMode_ from _MIEDllMode_ itself
+#!     (then only _MIEDllMode_ may be a project define, or the label clashes)
+#!   - the method prototypes of MyImportExportClass, so a DLL can export the
+#!     class with LINKNAME() and nothing has to be maintained by hand.
+#!----------------------------------------------------------------------------
+#GROUP(%MIEReadInc),AUTO
+#DECLARE(%MIELine)
+#DECLARE(%MIEUp)
+#DECLARE(%MIEPos)
+#DECLARE(%MIEInClass)
+#DECLARE(%MIEMethodName)
+#DECLARE(%MIEMethodProto)
+#FREE(%MIEIncMethods)
+#SET(%MIEIncFound,0)
+#SET(%MIEIncDefinesLink,1)
+#SET(%MIEIncFile,'MyImportExport.inc')
+#IF(NOT FILEEXISTS(%MIEIncFile))
+  #RETURN
+#ENDIF
+#SET(%MIEIncFound,1)
+#SET(%MIEIncDefinesLink,0)
+#SET(%MIEInClass,0)
+#OPEN(%MIEIncFile),READ
+#READ(%MIELine)
+#LOOP,WHILE(%MIELine <> %EOF)
+  #SET(%MIEPos,INSTRING('!',%MIELine,1,1))
+  #IF(%MIEPos)
+    #SET(%MIELine,SUB(%MIELine,1,%MIEPos-1))
+  #ENDIF
+  #SET(%MIEUp,UPPER(CLIP(%MIELine)))
+  #IF(INSTRING('_MIELINKMODE_',%MIEUp,1,1)=1 AND INSTRING('EQUATE',%MIEUp,1,1))
+    #SET(%MIEIncDefinesLink,1)
+  #ENDIF
+  #IF(%MIEInClass=0)
+    #IF(INSTRING('MYIMPORTEXPORTCLASS ',%MIEUp,1,1)=1 AND INSTRING(' CLASS',%MIEUp,1,1))
+      #SET(%MIEInClass,1)
+    #ENDIF
+  #ELSE
+    #IF(CLIP(LEFT(%MIEUp))='END' OR CLIP(LEFT(%MIEUp))='.')
+      #SET(%MIEInClass,0)
+    #ELSE
+      #SET(%MIEPos,INSTRING(' PROCEDURE',%MIEUp,1,1))
+      #IF(%MIEPos AND INSTRING(',PRIVATE',%MIEUp,1,1)=0)
+        #SET(%MIEMethodName,CLIP(LEFT(SUB(%MIELine,1,%MIEPos))))
+        #SET(%MIEMethodProto,CLIP(LEFT(SUB(%MIELine,%MIEPos+10,LEN(%MIELine)))))
+        #IF(SUB(%MIEMethodProto,1,1)<>'(')
+          #SET(%MIEMethodProto,'()' & %MIEMethodProto)
+        #ENDIF
+        #ADD(%MIEIncMethods,%MIEMethodName & %MIEMethodProto)
+      #ENDIF
+    #ENDIF
+  #ENDIF
+  #READ(%MIELine)
+#ENDLOOP
+#CLOSE(%MIEIncFile),READ
+#!
+#!----------------------------------------------------------------------------
+#! Walk the fields of the current %File.
+#!   %pEmit = 0 : only count the usable fields (returned)
+#!   %pEmit = 1 : emit one ThisMIE.AddField(...) per usable field / element
+#! Skipped: END markers, GROUPs (their children are used, unless the GROUP
+#! is OVER()'d, DIM()'d or MIEEXCLUDE'd), MEMO, BLOB, OVER() fields, and
+#! fields whose User Options contain MIEEXCLUDE.
+#!----------------------------------------------------------------------------
+#GROUP(%MIEFieldLoop,%pEmit),AUTO
+#DECLARE(%MIECnt)
+#DECLARE(%MIEDepth)
+#DECLARE(%MIESkipDepth)
+#DECLARE(%MIEIsKey)
+#DECLARE(%MIECol)
+#DECLARE(%MIEPic)
+#DECLARE(%MIEType)
+#DECLARE(%MIEI1)
+#DECLARE(%MIEI2)
+#DECLARE(%MIEI3)
+#DECLARE(%MIEI4)
+#SET(%MIECnt,0)
+#SET(%MIEDepth,0)
+#SET(%MIESkipDepth,0)
+#IF(%pEmit)
+  #FREE(%MIEKeyFields)
+  #IF(%FilePrimaryKey)
+    #FIX(%Key,%FilePrimaryKey)
+    #FOR(%KeyField)
+      #ADD(%MIEKeyFields,%KeyField)
+    #ENDFOR
+  #ENDIF
+#ENDIF
+#FOR(%Field)
+  #SET(%MIEType,UPPER(%FieldType))
+  #IF(%FieldID='' OR %MIEType='END')
+    #IF(%MIEDepth > 0)
+      #IF(%MIESkipDepth = %MIEDepth)
+        #SET(%MIESkipDepth,0)
+      #ENDIF
+      #SET(%MIEDepth,%MIEDepth-1)
+    #ENDIF
+    #CYCLE
+  #ENDIF
+  #IF(%MIEType='GROUP')
+    #SET(%MIEDepth,%MIEDepth+1)
+    #IF(%MIESkipDepth=0)
+      #IF(EXTRACT(UPPER(%FieldStatement),'OVER') OR %FieldDimension1 > 0 OR INSTRING('MIEEXCLUDE',UPPER(%FieldUserOptions),1,1))
+        #SET(%MIESkipDepth,%MIEDepth)
+      #ENDIF
+    #ENDIF
+    #CYCLE
+  #ENDIF
+  #IF(%MIESkipDepth)
+    #CYCLE
+  #ENDIF
+  #IF(%MIEType='MEMO' OR %MIEType='BLOB')
+    #CYCLE
+  #ENDIF
+  #IF(INSTRING('MIEEXCLUDE',UPPER(%FieldUserOptions),1,1))
+    #CYCLE
+  #ENDIF
+  #IF(EXTRACT(UPPER(%FieldStatement),'OVER'))
+    #CYCLE
+  #ENDIF
+  #SET(%MIECnt,%MIECnt+1)
+  #IF(%pEmit)
+    #IF(INLIST(%Field,%MIEKeyFields))
+      #SET(%MIEIsKey,1)
+    #ELSE
+      #SET(%MIEIsKey,0)
+    #ENDIF
+    #SET(%MIECol,%MIEColumnName(%FieldName,%FieldID))
+    #SET(%MIEPic,%FieldDisplayPicture)
+    #IF(%MIEPic='')
+      #SET(%MIEPic,%MIEFallbackPicture(%MIEType,%FieldPlaces))
+    #ENDIF
+    #IF(%FieldDimension4 > 0)
+      #LOOP,FOR(%MIEI1,1,%FieldDimension1)
+        #LOOP,FOR(%MIEI2,1,%FieldDimension2)
+          #LOOP,FOR(%MIEI3,1,%FieldDimension3)
+            #LOOP,FOR(%MIEI4,1,%FieldDimension4)
+    ThisMIE.AddField('%Field[%MIEI1,%MIEI2,%MIEI3,%MIEI4]','%(%MIECol & '_' & %MIEI1 & '_' & %MIEI2 & '_' & %MIEI3 & '_' & %MIEI4)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1,%MIEI2,%MIEI3,%MIEI4],%MIEIsKey)
+            #ENDLOOP
+          #ENDLOOP
+        #ENDLOOP
+      #ENDLOOP
+    #ELSIF(%FieldDimension3 > 0)
+      #LOOP,FOR(%MIEI1,1,%FieldDimension1)
+        #LOOP,FOR(%MIEI2,1,%FieldDimension2)
+          #LOOP,FOR(%MIEI3,1,%FieldDimension3)
+    ThisMIE.AddField('%Field[%MIEI1,%MIEI2,%MIEI3]','%(%MIECol & '_' & %MIEI1 & '_' & %MIEI2 & '_' & %MIEI3)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1,%MIEI2,%MIEI3],%MIEIsKey)
+          #ENDLOOP
+        #ENDLOOP
+      #ENDLOOP
+    #ELSIF(%FieldDimension2 > 0)
+      #LOOP,FOR(%MIEI1,1,%FieldDimension1)
+        #LOOP,FOR(%MIEI2,1,%FieldDimension2)
+    ThisMIE.AddField('%Field[%MIEI1,%MIEI2]','%(%MIECol & '_' & %MIEI1 & '_' & %MIEI2)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1,%MIEI2],%MIEIsKey)
+        #ENDLOOP
+      #ENDLOOP
+    #ELSIF(%FieldDimension1 > 0)
+      #LOOP,FOR(%MIEI1,1,%FieldDimension1)
+    ThisMIE.AddField('%Field[%MIEI1]','%(%MIECol & '_' & %MIEI1)','%MIEType','%(QUOTE(%MIEPic))',%Field[%MIEI1],%MIEIsKey)
+      #ENDLOOP
+    #ELSE
+    ThisMIE.AddField('%Field','%MIECol','%MIEType','%(QUOTE(%MIEPic))',%Field,%MIEIsKey)
+    #ENDIF
+  #ENDIF
+#ENDFOR
+#RETURN(%MIECnt)
+#!
+#!----------------------------------------------------------------------------
+#! Column name: the field's external NAME() if it has one (quotes and any
+#! "| READONLY" style driver flags removed), else the label without prefix.
+#!----------------------------------------------------------------------------
+#GROUP(%MIEColumnName,%pExternal,%pId),AUTO
+#DECLARE(%MIEN)
+#SET(%MIEN,CLIP(LEFT(%pExternal)))
+#IF(INSTRING('|',%MIEN,1,1))
+  #SET(%MIEN,CLIP(SUB(%MIEN,1,INSTRING('|',%MIEN,1,1)-1)))
+#ENDIF
+#IF(SUB(%MIEN,1,1)='''')
+  #SET(%MIEN,SUB(%MIEN,2,LEN(%MIEN)-1))
+#ENDIF
+#IF(LEN(%MIEN) > 0 AND SUB(%MIEN,LEN(%MIEN),1)='''')
+  #SET(%MIEN,SUB(%MIEN,1,LEN(%MIEN)-1))
+#ENDIF
+#IF(INSTRING('''',%MIEN,1,1))
+  #SET(%MIEN,'')
+#ENDIF
+#SET(%MIEN,CLIP(LEFT(%MIEN)))
+#IF(%MIEN='')
+  #SET(%MIEN,%pId)
+#ENDIF
+#RETURN(%MIEN)
+#!
+#!----------------------------------------------------------------------------
+#! Picture for a field that has none in the dictionary
+#!----------------------------------------------------------------------------
+#GROUP(%MIEFallbackPicture,%pType,%pPlaces)
+#IF(%pType='DATE')
+  #RETURN('@d10-')
+#ELSIF(%pType='TIME')
+  #RETURN('@t4')
+#ELSIF(%pType='STRING' OR %pType='CSTRING' OR %pType='PSTRING')
+  #RETURN('@s255')
+#ELSIF(%pType='DECIMAL' OR %pType='PDECIMAL')
+  #RETURN('@n-21.' & %pPlaces)
+#ELSIF(%pType='REAL' OR %pType='SREAL' OR %pType='BFLOAT4' OR %pType='BFLOAT8')
+  #RETURN('@n-21.6')
+#ENDIF
+#RETURN('@n-14')
+#!
+#!----------------------------------------------------------------------------
+#! A prompt value as a Clarion expression: '!expr' = expr, else a quoted literal
+#!----------------------------------------------------------------------------
+#GROUP(%MIEValueExpr,%pValue)
+#IF(SUB(%pValue,1,1)='!')
+  #RETURN(SUB(%pValue,2,LEN(%pValue)-1))
+#ENDIF
+#RETURN('''' & QUOTE(%pValue) & '''')
+#!
+#!----------------------------------------------------------------------------
+#! The procedure's primary table: first browse, else the form (SaveButton).
+#!----------------------------------------------------------------------------
+#GROUP(%MIEProcPrimary),PRESERVE,AUTO
+#DECLARE(%MIERet)
+#SET(%MIERet,'')
+#FOR(%ActiveTemplate),WHERE(%ActiveTemplate='BrowseBox(ABC)' OR %ActiveTemplate='BrowseBox(Clarion)')
+  #FOR(%ActiveTemplateInstance)
+    #CONTEXT(%Procedure,%ActiveTemplateInstance)
+      #IF(%MIERet='' AND %Primary)
+        #SET(%MIERet,%Primary)
+      #ENDIF
+    #ENDCONTEXT
+  #ENDFOR
+#ENDFOR
+#IF(%MIERet='')
+  #FOR(%ActiveTemplate),WHERE(%ActiveTemplate='SaveButton(ABC)' OR %ActiveTemplate='SaveButton(Clarion)')
+    #FOR(%ActiveTemplateInstance)
+      #CONTEXT(%Procedure,%ActiveTemplateInstance)
+        #IF(%MIERet='' AND %Primary)
+          #SET(%MIERet,%Primary)
+        #ENDIF
+      #ENDCONTEXT
+    #ENDFOR
+  #ENDFOR
+#ENDIF
+#RETURN(%MIERet)
+#!
+#!----------------------------------------------------------------------------
+#! Call MIE_ImportExport, optionally refreshing the window on success
+#!----------------------------------------------------------------------------
+#GROUP(%MIECallAndRefresh,%pTable,%pMode,%pRefresh)
+#IF(%pRefresh)
+IF MIE_ImportExport('%pTable',%pMode)
+  #INSERT(%MIERefreshWindow)
+END
+#ELSE
+MIE_ImportExport('%pTable',%pMode)
+#ENDIF
+#!
+#GROUP(%MIERefreshWindow)
+#IF(UPPER(%AppTemplateFamily)='CLARION')
+ForceRefresh = True
+DO RefreshWindow
+#ELSIF(VAREXISTS(%WindowManager))
+  #IF(%WindowManager)
+%WindowManager.Reset(1)
+  #ENDIF
+#ENDIF
+#!
+#!----------------------------------------------------------------------------
+#! The generated module <program>_MIE.clw
+#!----------------------------------------------------------------------------
+#GROUP(%MIEWriteModule)
+  MEMBER('%Program')
+!============================================================================
+! %MIEModuleFile - generated by the MyImportExport template.
+! Do not edit: change the template prompts / embeds and regenerate.
+#IF(%MIEIncFound)
+! Class header : %MIEIncFile (%(ITEMS(%MIEIncMethods)) methods; derives _MIELinkMode_ itself: %(CHOOSE(%MIEIncDefinesLink=1,'yes','no')))
+#ELSE
+! Class header : MyImportExport.inc NOT found on the redirection path at generate time
+#ENDIF
+! Template family: %AppTemplateFamily (ABC hooks: %MIEIsABC)
+! Class code   : _MIEDllMode_=%MIEDllMode (%(CHOOSE(%MIEDllMode=1,'imported from a DLL','compiled into this app')))
+!============================================================================
+
+  INCLUDE('MyImportExport.inc'),ONCE
+
+  MAP
+  END
+
+!----------------------------------------------------------------------------
+! MIE_ImportExport(pTable, pMode)
+!   pTable : dictionary table label; blank = the user picks a table
+!   pMode  : 0 = ask, MIE:Mode:Export or MIE:Mode:Import
+!   returns: 1 = something was imported / exported, 0 = cancelled / failed
+!----------------------------------------------------------------------------
+MIE_ImportExport     PROCEDURE(STRING pTable,BYTE pMode)
+TableName            STRING(100)
+Result               BYTE
+ExeDir               CSTRING(261)
+Pos                  LONG
+PickRow              LONG
+PickQueue            QUEUE
+TableLabel             STRING(64)
+TableDesc              STRING(128)
+                     END
+PickWindow           WINDOW('Import / Export - choose a table'),AT(,,300,196),FONT('Segoe UI',9),CENTER,GRAY,SYSTEM,DOUBLE
+                       PROMPT('Choose the table to import into or export from:'),AT(6,6,288,10),USE(?PickPrompt)
+                       LIST,AT(6,18,288,152),USE(?PickList),VSCROLL,FROM(PickQueue),FORMAT('90L(2)|M~Table~@s64@200L(2)~Description~@s128@')
+                       BUTTON('&OK'),AT(190,176,50,14),USE(?PickOK),DEFAULT
+                       BUTTON('Cancel'),AT(244,176,50,14),USE(?PickCancel)
+                     END
+ThisMIE              CLASS(MyImportExportClass)
+#IF(%MIEIsABC)
+FM                     &FileManager
+RM                     &RelationManager
+FMOpens                LONG
+OpenTable              PROCEDURE(),BYTE,DERIVED
+CloseTable             PROCEDURE(),DERIVED
+PrimeRecord            PROCEDURE(),DERIVED
+CancelPrime            PROCEDURE(),DERIVED
+InsertRecord           PROCEDURE(),BYTE,DERIVED
+UpdateRecord           PROCEDURE(),BYTE,DERIVED
+FetchRecord            PROCEDURE(),BYTE,DERIVED
+DeleteRecord           PROCEDURE(),BYTE,DERIVED
+#ENDIF
+ValidateRecord         PROCEDURE(),BYTE,DERIVED
+ExportFilter           PROCEDURE(),BYTE,DERIVED
+                     END
+#EMBED(%MIEProcData,'MIE_ImportExport - local data'),DATA,TREE('MyImportExport|MIE_ImportExport procedure|0 - Local data')
+  CODE
+  #EMBED(%MIEProcStart,'MIE_ImportExport - start (pTable / pMode may be changed here)'),TREE('MyImportExport|MIE_ImportExport procedure|1 - Start of procedure')
+  Result = 0
+  TableName = pTable
+  IF TableName = ''
+    DO PickTable
+    IF TableName = ''
+      RETURN 0
+    END
+  END
+  ThisMIE.Init()
+  ThisMIE.HelperPath = %(%MIEValueExpr(%MIEHelper))
+  IF ThisMIE.HelperPath <> '' AND ~INSTRING(':',ThisMIE.HelperPath,1,1) AND SUB(ThisMIE.HelperPath,1,1) <> '\'
+    ExeDir = COMMAND('0')                       ! the program, to find the helper beside it
+    LOOP Pos = LEN(ExeDir) TO 1 BY -1
+      IF ExeDir[Pos] = '\' THEN BREAK.
+    END
+    IF Pos > 1
+      ExeDir = SUB(ExeDir,1,Pos-1)
+    ELSE
+      ExeDir = PATH()
+    END
+    ThisMIE.HelperPath = ExeDir & '\' & ThisMIE.HelperPath
+  END
+#IF(%MIEIniFile)
+  ThisMIE.IniFile = %(%MIEValueExpr(%MIEIniFile))
+#ELSIF(%MIEIsABC)
+  ThisMIE.IniFile = INIMgr.FileName
+#ENDIF
+  ThisMIE.Format = '%MIEFormat'
+#IF(%MIEUsePictures)
+  ThisMIE.UsePictures = 1
+#ELSE
+  ThisMIE.UsePictures = 0
+#ENDIF
+  CASE UPPER(TableName)
+#FOR(%MIETables)
+  #FIX(%File,%MIETables)
+  OF '%(UPPER(%File))'                                          ! %FileDescription
+  #IF(%MIEIsABC)
+    ThisMIE.FM &= Access:%File
+    ThisMIE.RM &= Relate:%File
+  #ENDIF
+  #IF(%FilePrimaryKey)
+    ThisMIE.SetTable(%File,'%File',%FilePrimaryKey)
+  #ELSE
+    ThisMIE.SetTable(%File,'%File')
+  #ENDIF
+#INSERT(%MIEFieldLoop,1)
+#ENDFOR
+  ELSE
+    ThisMIE.ShowMessage('MyImportExport: the table "' & CLIP(TableName) & '" is not available for import / export.','Import / Export')
+    ThisMIE.Kill()
+    RETURN 0
+  END
+  #EMBED(%MIEAfterFields,'MIE_ImportExport - fields added, before the saved mapping is loaded'),TREE('MyImportExport|MIE_ImportExport procedure|2 - Fields added, before LoadMap')
+  ThisMIE.LoadMap()
+  #EMBED(%MIEBeforeAsk,'MIE_ImportExport - before Ask (mapping loaded)'),TREE('MyImportExport|MIE_ImportExport procedure|3 - Before Ask')
+  Result = ThisMIE.Ask(pMode)
+  #EMBED(%MIEAfterAsk,'MIE_ImportExport - after Ask (Result = 1 when something was done)'),TREE('MyImportExport|MIE_ImportExport procedure|4 - After Ask')
+  ThisMIE.Kill()
+  RETURN Result
+
+!----------------------------------------------------------------------------
+PickTable            ROUTINE
+  FREE(PickQueue)
+#FOR(%MIETables)
+  #FIX(%File,%MIETables)
+  PickQueue.TableLabel = '%File'
+  PickQueue.TableDesc = '%(QUOTE(%FileDescription))'
+  ADD(PickQueue)
+#ENDFOR
+  SORT(PickQueue,PickQueue.TableLabel)
+  TableName = ''
+  PickRow = 1
+  OPEN(PickWindow)
+  ACCEPT
+    CASE EVENT()
+    OF EVENT:OpenWindow
+      IF RECORDS(PickQueue)
+        SELECT(?PickList,1)
+      END
+    OF EVENT:NewSelection
+      IF FIELD() = ?PickList
+        PickRow = CHOICE(?PickList)               ! recorded here: CHOICE() is only valid while the list has focus
+      END
+    OF EVENT:Accepted
+      CASE FIELD()
+      OF ?PickList
+        PickRow = CHOICE(?PickList)               ! double-click / Enter on the list
+        POST(EVENT:Accepted,?PickOK)
+      OF ?PickOK
+        IF PickRow < 1 OR PickRow > RECORDS(PickQueue)
+          PickRow = 1
+        END
+        GET(PickQueue,PickRow)
+        IF NOT ERRORCODE()
+          TableName = PickQueue.TableLabel
+        END
+        POST(EVENT:CloseWindow)
+      OF ?PickCancel
+        TableName = ''
+        POST(EVENT:CloseWindow)
+      END
+    END
+  END
+  CLOSE(PickWindow)
+#IF(%MIEIsABC)
+
+!----------------------------------------------------------------------------
+! ABC hooks: every table goes through its FileManager / RelationManager
+! (FM / RM are set per table in MIE_ImportExport, so no CASE is needed here).
+! All of them return 0 = ok, like Level:Benign.
+!----------------------------------------------------------------------------
+ThisMIE.OpenTable    PROCEDURE()
+  CODE
+  #EMBED(%MIEHookOpenTable,'OpenTable - before the table is opened'),TREE('MyImportExport|Hooks|OpenTable')
+  IF SELF.FM &= NULL
+    RETURN PARENT.OpenTable()
+  END
+  #IF(SUB(%MIEDeleteVia,1,8)='Relation')
+  IF SELF.RM.Open() <> Level:Benign                ! opens the related tables too (RI on delete)
+  #ELSE
+  IF SELF.FM.Open() <> Level:Benign
+  #ENDIF
+    RETURN 1
+  END
+  SELF.FM.UseFile()
+  SELF.FMOpens += 1
+  RETURN 0
+
+ThisMIE.CloseTable   PROCEDURE()
+  CODE
+  #EMBED(%MIEHookCloseTable,'CloseTable - before the table is closed'),TREE('MyImportExport|Hooks|CloseTable')
+  IF SELF.FM &= NULL
+    PARENT.CloseTable()
+    RETURN
+  END
+  IF SELF.FMOpens > 0
+  #IF(SUB(%MIEDeleteVia,1,8)='Relation')
+    SELF.RM.Close()
+  #ELSE
+    SELF.FM.Close()
+  #ENDIF
+    SELF.FMOpens -= 1
+  END
+
+ThisMIE.PrimeRecord  PROCEDURE()
+  CODE
+  #EMBED(%MIEHookPrimeRecord,'PrimeRecord - before the new record is primed'),TREE('MyImportExport|Hooks|PrimeRecord')
+  IF SELF.FM &= NULL
+    PARENT.PrimeRecord()
+  ELSE
+    SELF.FM.PrimeRecord()                           ! clears the buffer, primes auto-increment
+  END
+
+ThisMIE.CancelPrime  PROCEDURE()
+  CODE
+  #EMBED(%MIEHookCancelPrime,'CancelPrime - before a primed record is cancelled'),TREE('MyImportExport|Hooks|CancelPrime')
+  IF SELF.FM &= NULL
+    PARENT.CancelPrime()
+  ELSE
+    SELF.FM.CancelAutoInc()
+  END
+
+ThisMIE.InsertRecord PROCEDURE()
+  CODE
+  #EMBED(%MIEHookInsertRecord,'InsertRecord - before the record is added'),TREE('MyImportExport|Hooks|InsertRecord')
+  IF SELF.FM &= NULL
+    RETURN PARENT.InsertRecord()
+  END
+  IF SELF.KeyMapped AND SELF.FM.GetHasAutoInc()
+    RETURN PARENT.InsertRecord()                    ! keep the imported key: TryInsert would renumber it
+  END
+  RETURN SELF.FM.TryInsert()
+
+ThisMIE.UpdateRecord PROCEDURE()
+  CODE
+  #EMBED(%MIEHookUpdateRecord,'UpdateRecord - before the record is written back'),TREE('MyImportExport|Hooks|UpdateRecord')
+  IF SELF.FM &= NULL
+    RETURN PARENT.UpdateRecord()
+  END
+  RETURN SELF.FM.TryUpdate()
+
+ThisMIE.FetchRecord  PROCEDURE()
+  CODE
+  #EMBED(%MIEHookFetchRecord,'FetchRecord - before the record is read by its primary key'),TREE('MyImportExport|Hooks|FetchRecord')
+  IF SELF.FM &= NULL
+    RETURN PARENT.FetchRecord()
+  END
+  IF SELF.TableKey &= NULL
+    RETURN 1
+  END
+  RETURN SELF.FM.TryFetch(SELF.TableKey)
+
+ThisMIE.DeleteRecord PROCEDURE()
+  CODE
+  #EMBED(%MIEHookDeleteRecord,'DeleteRecord - before a record is deleted (Replace all)'),TREE('MyImportExport|Hooks|DeleteRecord')
+  IF SELF.FM &= NULL
+    RETURN PARENT.DeleteRecord()
+  END
+  #IF(SUB(%MIEDeleteVia,1,8)='Relation')
+  RETURN SELF.RM.Delete(0)                          ! no confirmation, dictionary RI applies
+  #ELSE
+  RETURN SELF.FM.DeleteRecord(0)                    ! no confirmation, no cascade
+  #ENDIF
+#ENDIF
+
+!----------------------------------------------------------------------------
+! Rules: ValidateRecord (import, non-zero = skip the row) and
+! ExportFilter (export, 0 = skip the record). SELF.TableName = table label.
+!----------------------------------------------------------------------------
+ThisMIE.ValidateRecord PROCEDURE()
+ReturnValue          BYTE,AUTO
+  CODE
+  ReturnValue = PARENT.ValidateRecord()
+  #EMBED(%MIEValidateRecord,'ValidateRecord - any table (ReturnValue = 1 skips the row)'),TREE('MyImportExport|Hooks|ValidateRecord|Any table')
+  #SUSPEND
+  #?CASE UPPER(SELF.TableName)
+  #FOR(%MIETables)
+    #FIX(%File,%MIETables)
+    #SUSPEND
+  #?OF '%(UPPER(%File))'
+    #EMBED(%MIEValidateTable,'ValidateRecord - this table (ReturnValue = 1 skips the row)'),%File,TREE('MyImportExport|Hooks|ValidateRecord|' & %File)
+    #RESUME
+  #ENDFOR
+  #?END
+  #RESUME
+  RETURN ReturnValue
+
+ThisMIE.ExportFilter PROCEDURE()
+ReturnValue          BYTE,AUTO
+  CODE
+  ReturnValue = PARENT.ExportFilter()
+  #EMBED(%MIEExportFilter,'ExportFilter - any table (ReturnValue = 0 skips the record)'),TREE('MyImportExport|Hooks|ExportFilter|Any table')
+  #SUSPEND
+  #?CASE UPPER(SELF.TableName)
+  #FOR(%MIETables)
+    #FIX(%File,%MIETables)
+    #SUSPEND
+  #?OF '%(UPPER(%File))'
+    #EMBED(%MIEExportFilterTable,'ExportFilter - this table (ReturnValue = 0 skips the record)'),%File,TREE('MyImportExport|Hooks|ExportFilter|' & %File)
+    #RESUME
+  #ENDFOR
+  #?END
+  #RESUME
+  RETURN ReturnValue

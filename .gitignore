@@ -1,0 +1,20 @@
+# Visual Studio / dotnet
+.vs/
+*.user
+*.suo
+
+# helper build output (the shipped exe lives in the top-level bin\ folder and IS committed)
+helper/**/bin/
+helper/**/obj/
+
+# Python test leftovers
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# temp files written by MIEConvert while saving
+*.mietmp
+
+# Clarion test build output
+test/.build/

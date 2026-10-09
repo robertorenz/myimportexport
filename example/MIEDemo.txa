@@ -1,0 +1,91 @@
+[APPLICATION]
+VERSION 34
+TODO ABC ToDo
+DICTIONARY 'MIEDemo.dct'
+PROCEDURE BrowseCustomer
+[COMMON]
+FROM ABC
+MODIFIED '2026/10/09' '09:00:00'
+[PROMPTS]
+%ProgramAuthor DEFAULT  ('MyImportExport demo')
+%GlobalExternal LONG  (0)
+%ExternalSource DEFAULT  ('Dynamic Link Library (DLL)')
+%GenerateEmbedComments LONG  (0)
+%INIType DEFAULT  ('NVD_INI')
+%INIFile DEFAULT  ('Program Name.INI')
+%INIInAppDirectory LONG  (1)
+%EnableRunTimeTranslator LONG  (0)
+%GlobalUseABCClasess LONG  (1)
+[ADDITION]
+NAME MyImportExport MyImportExportGlobal
+[INSTANCE]
+INSTANCE 1
+[PROMPTS]
+%MIEDisable LONG  (0)
+%MIEGenerate LONG  (1)
+%MIEFormat DEFAULT  ('XLSX')
+%MIEUsePictures LONG  (0)
+%MIEHelper DEFAULT  ('MIEConvert.exe')
+%MIECopyHelper LONG  (0)
+%MIEIniFile DEFAULT  ('')
+%MIEDeleteVia DEFAULT  ('FileManager (no cascade)')
+%MIEClassLocation DEFAULT  ('Default')
+%MIEExportClass DEFAULT  ('Default')
+[PROJECT]
+#noedit
+#system win32 exe
+#model clarion dll
+#pragma debug(vid=>full)
+#compile "MIEDemo.clw" -- GENERATED
+#compile "MIEDemo001.clw" -- GENERATED
+#link "MIEDemo.EXE"
+[PROGRAM]
+[COMMON]
+FROM ABC ABC
+MODIFIED '2026/10/09' '09:00:00'
+[END]
+[MODULE]
+[COMMON]
+FROM ABC GENERATED
+MODIFIED '2026/10/09' '09:00:00'
+[PROCEDURE]
+NAME BrowseCustomer
+PROTOTYPE '()'
+PARAMETERS '()'
+[COMMON]
+DESCRIPTION 'Customers - browse with Import / Export buttons'
+FROM ABC Window
+MODIFIED '2026/10/09' '09:00:00'
+[FILES]
+[PRIMARY]
+Customer
+[INSTANCE]
+1
+[KEY]
+CUS:KeyID
+[ADDITION]
+NAME ABC BrowseBox
+[INSTANCE]
+INSTANCE 1
+PROCPROP
+[ADDITION]
+NAME MyImportExport MyImportExportButtons
+[INSTANCE]
+INSTANCE 2
+[PROMPTS]
+%MIEBtnDisable LONG  (0)
+%MIEBtnTableSource DEFAULT  ('Procedure''s primary table')
+%MIEBtnStyle DEFAULT  ('Two buttons (Import, Export)')
+%MIEBtnRefresh LONG  (1)
+[ADDITION]
+NAME ABC CloseButton
+[INSTANCE]
+INSTANCE 3
+[WINDOW]
+Window WINDOW('Customers'),AT(,,360,220),FONT('Segoe UI',9,,FONT:regular),CENTER,GRAY,SYSTEM,DOUBLE
+       LIST,AT(6,6,348,180),USE(?Browse:1),HVSCROLL,FORMAT('40R(2)|M~ID~C(0)@n-14@160L(2)|M~Name~@s40@80L(2)|M~Birth Date~@d17@'),FROM(Queue:Browse:1),IMM,#FIELDS(CUS:ID,CUS:Name,CUS:BirthDate),#ORIG(?List),#SEQ(1)
+       BUTTON('&Import...'),AT(6,194,50,14),USE(?MIEImport),#ORIG(?MIEImport),#SEQ(2)
+       BUTTON('E&xport...'),AT(60,194,50,14),USE(?MIEExport),#ORIG(?MIEExport),#SEQ(2)
+       BUTTON('Close'),AT(304,194,50,14),USE(?Close),#ORIG(?Close),#SEQ(3)
+     END
+[END]

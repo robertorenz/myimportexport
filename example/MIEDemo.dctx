@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Dictionary Name="MIEDemo" Version="1" DctxFormat="4">
+	<DictionaryVersion Version="1" Description="MyImportExport demo dictionary"/>
+	<Table Guid="{3e1a0001-0000-4000-8000-000000000001}" Ident="1" Name="Customer" Prefix="CUS" Description="Customers" Driver="TOPSPEED" Path="Customer.tps" Create="true" Thread="true" Bindable="true">
+		<Field Guid="{3e1a0001-0000-4000-8000-000000000101}" Ident="1" Name="ID" DataType="LONG" Size="4" ScreenPicture="@n-14" ScreenPrompt="ID:" ReportHeading="ID"/>
+		<Field Guid="{3e1a0001-0000-4000-8000-000000000102}" Ident="2" Name="Name" DataType="STRING" Size="40" ScreenPicture="@s40" ScreenPrompt="Name:" ReportHeading="Name"/>
+		<Field Guid="{3e1a0001-0000-4000-8000-000000000103}" Ident="3" Name="Email" DataType="STRING" Size="60" ScreenPicture="@s60" ScreenPrompt="Email:" ReportHeading="Email" ExternalName="email_address"/>
+		<Field Guid="{3e1a0001-0000-4000-8000-000000000104}" Ident="4" Name="BirthDate" DataType="DATE" Size="4" ScreenPicture="@d17" ScreenPrompt="Birth Date:" ReportHeading="Birth Date"/>
+		<Field Guid="{3e1a0001-0000-4000-8000-000000000105}" Ident="5" Name="BirthRaw_GROUP" DataType="GROUP" Size="4" ScreenPicture="@s4" Over="BirthDate" NoPopulate="true">
+			<Field Guid="{3e1a0001-0000-4000-8000-000000000106}" Ident="6" Name="BirthRaw" DataType="LONG" Size="4" ScreenPicture="@n-14"/>
+		</Field>
+		<Field Guid="{3e1a0001-0000-4000-8000-000000000107}" Ident="7" Name="CallTime" DataType="TIME" Size="4" ScreenPicture="@t7" ScreenPrompt="Call Time:" ReportHeading="Call Time"/>
+		<Field Guid="{3e1a0001-0000-4000-8000-000000000108}" Ident="8" Name="Balance" DataType="DECIMAL" Size="11" Places="2" ScreenPicture="@n-15.2" ScreenPrompt="Balance:" ReportHeading="Balance"/>
+		<Field Guid="{3e1a0001-0000-4000-8000-000000000109}" Ident="9" Name="Phones" DataType="STRING" Size="20" Dim1="3" ScreenPicture="@s20" ScreenPrompt="Phones:" ReportHeading="Phones"/>
+		<Field Guid="{3e1a0001-0000-4000-8000-00000000010a}" Ident="10" Name="Address" DataType="GROUP" Size="70" ScreenPicture="@s70">
+			<Field Guid="{3e1a0001-0000-4000-8000-00000000010b}" Ident="11" Name="Street" DataType="STRING" Size="40" ScreenPicture="@s40" ScreenPrompt="Street:" ReportHeading="Street"/>
+			<Field Guid="{3e1a0001-0000-4000-8000-00000000010c}" Ident="12" Name="City" DataType="STRING" Size="30" ScreenPicture="@s30" ScreenPrompt="City:" ReportHeading="City"/>
+		</Field>
+		<Field Guid="{3e1a0001-0000-4000-8000-00000000010d}" Ident="13" Name="Secret" DataType="STRING" Size="20" ScreenPicture="@s20" ScreenPrompt="Secret:" ReportHeading="Secret">
+			<Option Property="MIEEXCLUDE" PropertyType="1" PropertyValue="1"/>
+		</Field>
+		<Field Guid="{3e1a0001-0000-4000-8000-00000000010e}" Ident="14" Name="Notes" DataType="MEMO" Size="1000" ScreenPrompt="Notes:" ReportHeading="Notes"/>
+		<Key Guid="{3e1a0001-0000-4000-8000-000000000201}" Ident="1" Order="1" Name="KeyID" KeyType="KEY" Unique="true" Primary="true" AutoNumber="true">
+			<Component Guid="{3e1a0001-0000-4000-8000-000000000301}" FieldId="{3e1a0001-0000-4000-8000-000000000101}" Order="1" Ascend="true"/>
+		</Key>
+		<Key Guid="{3e1a0001-0000-4000-8000-000000000202}" Ident="2" Order="2" Name="KeyName" KeyType="KEY" NoCase="true">
+			<Component Guid="{3e1a0001-0000-4000-8000-000000000302}" FieldId="{3e1a0001-0000-4000-8000-000000000102}" Order="1" Ascend="true"/>
+		</Key>
+	</Table>
+	<Table Guid="{3e1a0002-0000-4000-8000-000000000001}" Ident="2" Name="Product" Prefix="PRO" Description="Products (price list)" Driver="TOPSPEED" Path="Product.tps" Create="true" Thread="true" Bindable="true">
+		<Field Guid="{3e1a0002-0000-4000-8000-000000000101}" Ident="21" Name="ID" DataType="LONG" Size="4" ScreenPicture="@n-14" ScreenPrompt="ID:" ReportHeading="ID"/>
+		<Field Guid="{3e1a0002-0000-4000-8000-000000000102}" Ident="22" Name="Code" DataType="STRING" Size="20" ScreenPicture="@s20" ScreenPrompt="Code:" ReportHeading="Code"/>
+		<Field Guid="{3e1a0002-0000-4000-8000-000000000103}" Ident="23" Name="Description" DataType="STRING" Size="60" ScreenPicture="@s60" ScreenPrompt="Description:" ReportHeading="Description"/>
+		<Field Guid="{3e1a0002-0000-4000-8000-000000000104}" Ident="24" Name="Price" DataType="DECIMAL" Size="9" Places="2" ScreenPicture="@n-13.2" ScreenPrompt="Price:" ReportHeading="Price"/>
+		<Field Guid="{3e1a0002-0000-4000-8000-000000000105}" Ident="25" Name="Stock" DataType="LONG" Size="4" ScreenPrompt="Stock:" ReportHeading="Stock"/>
+		<Key Guid="{3e1a0002-0000-4000-8000-000000000201}" Ident="21" Order="1" Name="KeyID" KeyType="KEY" Unique="true" Primary="true">
+			<Component Guid="{3e1a0002-0000-4000-8000-000000000301}" FieldId="{3e1a0002-0000-4000-8000-000000000101}" Order="1" Ascend="true"/>
+		</Key>
+		<Key Guid="{3e1a0002-0000-4000-8000-000000000202}" Ident="22" Order="2" Name="KeyCode" KeyType="KEY" Unique="true">
+			<Component Guid="{3e1a0002-0000-4000-8000-000000000302}" FieldId="{3e1a0002-0000-4000-8000-000000000102}" Order="1" Ascend="true"/>
+		</Key>
+	</Table>
+	<Table Guid="{3e1a0003-0000-4000-8000-000000000001}" Ident="3" Name="AppLog" Prefix="LOG" Description="Internal log - excluded via MIEEXCLUDE" Driver="TOPSPEED" Path="AppLog.tps" Create="true" Thread="true">
+		<Option Property="MIEEXCLUDE" PropertyType="1" PropertyValue="1"/>
+		<Field Guid="{3e1a0003-0000-4000-8000-000000000101}" Ident="31" Name="Stamp" DataType="LONG" Size="4" ScreenPicture="@n-14"/>
+		<Field Guid="{3e1a0003-0000-4000-8000-000000000102}" Ident="32" Name="Text" DataType="STRING" Size="200" ScreenPicture="@s200"/>
+	</Table>
+</Dictionary>

@@ -1,0 +1,8 @@
+# Clarion sources are CRLF + Windows-1252: never convert them
+*.clw -text
+*.inc -text
+*.tpl -text
+*.tpw -text
+*.txa -text
+*.dctx -text
+*.exe binary
