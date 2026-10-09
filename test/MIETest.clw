@@ -16,6 +16,8 @@
     UpsertTest()
     MultiTest()
     PicturesTest()
+    FavTest()
+    Check(BYTE pOk,STRING pWhat)
     MultiOne(STRING pFormat,STRING pExt)
   END
 
@@ -62,6 +64,20 @@ SetupTable             PROCEDURE(STRING pName),BYTE,DERIVED
                      END
 
   CODE
+  IF COMMAND('/win')                    ! manual look at the Export tables window
+    TestMie.Init()
+    TestMie.IniFile = LONGPATH() & '<92>miefav.ini'
+    TestMie.AddTable('Customer','Customers')
+    TestMie.AddTable('CustCopy','Copy of customers')
+    TestMie.AddTable('Product','Products')
+    GET(TestMie.Tables,1); TestMie.Tables.Selected = 1; PUT(TestMie.Tables)
+    TestMie.Format = 'XLSX'; TestMie.FileName = 'c:<92>temp<92>month.xlsx'
+    TestMie.SaveFavorite('Month end')
+    TestMie.LoadTablesMap()
+    TestMie.AskTables()
+    TestMie.Kill()
+    RETURN
+  END
   CREATE(LogFile)
   WriteLog('start')
   REMOVE(Customer)
@@ -78,6 +94,7 @@ SetupTable             PROCEDURE(STRING pName),BYTE,DERIVED
   UpsertTest()
   MultiTest()
   PicturesTest()
+  FavTest()
   WriteLog('FAILURES: ' & Failures)
   HALT(Failures)
 
@@ -361,3 +378,52 @@ Exp                  MyImportExportClass
     WriteLog('PICTURES export: ' & Exp.Processed & ' records')
   END
   Exp.Kill()
+
+Check                PROCEDURE(BYTE pOk,STRING pWhat)
+  CODE
+  IF pOk
+    WriteLog('  ok: ' & pWhat)
+  ELSE
+    Failures += 1
+    WriteLog('  FAILED: ' & pWhat)
+  END
+
+FavTest              PROCEDURE
+Fav                  MyImportExportClass
+Ini                  CSTRING(260)
+  CODE
+  WriteLog('FAVORITES')
+  Ini = LONGPATH() & '<92>miefav.ini'
+  REMOVE(Ini)
+  Fav.Init()
+  Fav.Silent  = 1
+  Fav.IniFile = Ini
+  Fav.AddTable('Customer','Customers')
+  Fav.AddTable('CustCopy','Copy')
+  Fav.AddTable('Product','Products')
+  GET(Fav.Tables,1); Fav.Tables.Selected = 1; PUT(Fav.Tables)
+  GET(Fav.Tables,3); Fav.Tables.Selected = 1; PUT(Fav.Tables)
+  Fav.Format = 'XLSX'; Fav.FileName = 'c:<92>temp<92>month.xlsx'
+  Check(CHOOSE(Fav.SaveFavorite('Month end') = 0),'save Month end')
+  GET(Fav.Tables,1); Fav.Tables.Selected = 0; PUT(Fav.Tables)
+  GET(Fav.Tables,3); Fav.Tables.Selected = 0; PUT(Fav.Tables)
+  GET(Fav.Tables,2); Fav.Tables.Selected = 1; PUT(Fav.Tables)
+  Fav.Format = 'JSON'; Fav.FileName = 'c:<92>temp<92>prices.json'
+  Check(CHOOSE(Fav.SaveFavorite(' Price, list') = 0),'save Price list (name cleaned)')
+  Check(CHOOSE(Fav.FavoriteNames() = 'Month end|Price list'),'names = ' & Fav.FavoriteNames())
+  Check(CHOOSE(Fav.SaveFavorite('') = 1),'empty name refused')
+  Check(CHOOSE(Fav.LoadFavorite('MONTH END') = 0),'load, any case')
+  GET(Fav.Tables,1); Check(Fav.Tables.Selected,'Customer ticked')
+  GET(Fav.Tables,2); Check(CHOOSE(Fav.Tables.Selected = 0),'CustCopy not ticked')
+  GET(Fav.Tables,3); Check(Fav.Tables.Selected,'Product ticked')
+  Check(CHOOSE(UPPER(Fav.Format) = 'XLSX' AND Fav.FileName = 'c:<92>temp<92>month.xlsx'),'format + file restored')
+  Check(CHOOSE(Fav.Favorite = 'Month end'),'Favorite property')
+  Fav.SaveTablesMap()
+  Fav.DeleteFavorite('month end')
+  Check(CHOOSE(Fav.FavoriteNames() = 'Price list'),'deleted from list: ' & Fav.FavoriteNames())
+  Check(CHOOSE(Fav.LoadFavorite('Month end') = 1),'deleted favorite does not load')
+  Check(CHOOSE(GETINI('MIE__Favorite Month end','Format','gone',Ini) = 'gone'),'section removed')
+  Check(CHOOSE(Fav.Favorite = ''),'Favorite cleared')
+  Check(CHOOSE(Fav.LoadFavorite('Price list') = 0),'other favorite still loads')
+  GET(Fav.Tables,2); Check(Fav.Tables.Selected,'CustCopy ticked')
+  Fav.Kill()

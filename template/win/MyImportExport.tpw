@@ -472,7 +472,9 @@ ThisMIE              MIE_DictClass
 #ENDFOR
   ThisMIE.LoadTablesMap()
   IF NOT OMITTED(pTables)
-    IF CLIP(pTables) <> ''
+    IF SUB(LEFT(pTables),1,1) = '@'                             ! '@Name' = a saved favorite
+      ThisMIE.LoadFavorite(SUB(LEFT(pTables),2,LEN(CLIP(LEFT(pTables)))-1))
+    ELSIF CLIP(pTables) <> ''
       Want = ','
       LOOP Pos = 1 TO LEN(CLIP(pTables))
         IF pTables[Pos] <> ' ' THEN Want = Want & UPPER(pTables[Pos]).

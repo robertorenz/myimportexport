@@ -91,6 +91,7 @@ ReplaceSheet           BYTE          ! xlsx export: keep other sheets
 UsePictures            BYTE          ! CSV/TSV/XML export: dates/times/numbers with dictionary pictures
 HelperPath             CSTRING(261)  ! full path of MIEConvert.exe
 IniFile                CSTRING(261)  ! where mappings are saved
+Favorite               CSTRING(41)   ! favorite last loaded or saved (multi-table export)
 Silent                 BYTE          ! no messages
 ! --- results --------------------------------------------------------------
 ErrorText              CSTRING(1025)
@@ -153,6 +154,12 @@ SaveTablesMap          PROCEDURE
 LoadTablesMap          PROCEDURE
 IsMultiFormat          PROCEDURE(<STRING pFormat>),BYTE               ! 1 = JSON, XML, XLSX, XLS (one file holds every table)
 BatchFileName          PROCEDURE(STRING pName),STRING                 ! CSV / TSV: the per-table file name
+! --- favorites: named sets of tables (+ format, file) ---------------------
+FavoriteNames          PROCEDURE,STRING                               ! saved favorites, separated by |
+SaveFavorite           PROCEDURE(STRING pName),BYTE,PROC              ! store the ticked tables, format, file. 0 = ok
+LoadFavorite           PROCEDURE(STRING pName),BYTE,PROC              ! tick its tables, restore format, file. 0 = ok
+DeleteFavorite         PROCEDURE(STRING pName)
+FavoriteClean          PROCEDURE(STRING pName),STRING                 ! name without | [ ] = ; , (max 40)
 ! --- virtual hooks ------------------------------------------------------
 OpenTable              PROCEDURE,BYTE,VIRTUAL
 CloseTable             PROCEDURE,VIRTUAL
@@ -193,6 +200,10 @@ AppendLine             PROCEDURE(STRING pText),PROTECTED
 WriteText              PROCEDURE(STRING pText),PROTECTED
 FlushOut               PROCEDURE,PROTECTED
 EnsureScratch          PROCEDURE(LONG pSize),PROTECTED
+WriteTableSet          PROCEDURE(STRING pSection),PROTECTED
+ReadTableSet           PROCEDURE(STRING pSection),BYTE,PROTECTED
+FavoriteIndex          PROCEDURE(STRING pName),LONG,PROTECTED
+FavoriteName           PROCEDURE(LONG pIndex),STRING,PROTECTED
                      END
 
   _EndOfInclude_

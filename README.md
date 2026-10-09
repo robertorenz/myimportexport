@@ -72,6 +72,20 @@ This copies `template\win\*.tpl/.tpw` to `accessory\template\win`, `libsrc\win\*
 Each table uses the columns, order and headers saved for it in the single-table window. The ticked
 tables, format and file are remembered for next time.
 
+**Favorites:** click *Save as...* next to *Favorite* to store the ticked tables, the format and the
+file under a name, such as "Month end". Pick it from the *Favorite* list next time, and *Delete*
+removes it. From code:
+
+```clarion
+  MIE_ExportTables('@Month end')            ! window opens with the favorite loaded
+  IF MIE.LoadFavorite('Month end') = 0      ! class: no window at all
+    MIE.ExportTables()
+  END
+```
+
+The code template's *Export several tables* mode has a *Start with favorite* prompt. Favorites are
+kept in the INI file (`[MIE__Tables] Favorites=` and one `[MIE__Favorite name]` section each).
+
 Ship `MIEConvert.exe` next to your program's exe.
 
 ### The window
@@ -161,7 +175,7 @@ Derive the class to change table I/O (`OpenTable`, `InsertRecord`, `UpdateRecord
 
 - `pwsh test\build.ps1`: all six formats round-trip through the Clarion class with 0 differences,
   add-or-update import works, and two tables export into one JSON, XML, XLSX and XLS file (and one
-  CSV file each).
+  CSV file each), and favorites save, load in any case and delete.
 - `helper\tests\run_tests.py`: 36/36 checks, including several tables per file and Excel sheet-name
   cleanup. Our files were verified in openpyxl, xlrd and Excel 16.
 - Template: generated and compiled for ABC single-EXE, multi-DLL (data DLL + consumer EXE) and Legacy.

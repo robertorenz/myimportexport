@@ -593,7 +593,10 @@ all records.</li>
     add('''<p>Tick <b>Show the "Export tables..." button</b> on the buttons control template, or call
 <code>MIE_ExportTables()</code>. Tick the tables, choose XLSX and a file, and click <b>Export</b>: each table
 becomes a sheet named after it. JSON gives one collection per table and XML one element per table; CSV and
-TSV write one file per table.</p>''')
+TSV write one file per table.</p>
+<p>To skip the ticking next time, click <b>Save as...</b> next to <b>Favorite</b> and give the set a name,
+such as <i>Month end</i>. The favorite keeps the ticked tables, the format and the file. Next time, pick it
+from the <b>Favorite</b> list and click <b>Export</b>. <b>Delete</b> removes the chosen favorite.</p>''')
     add(note('warn', 'Replace all deletes first', '<p><i>Replace all records</i> empties the table before it '
         'adds the rows, and asks first. Use it for lookup tables you reload from a master file.</p>'))
     add('<h2 id="hand"><span class="k">Without the template</span>The smallest program by hand</h2>')
@@ -792,6 +795,18 @@ table and the multi-table export reuses them.</p>''')
         '<code>BatchAdd</code> for each ticked table, then <code>BatchFinish</code> runs the helper\'s '
         '<code>exportmulti</code> command once. You can drive the batch methods yourself to combine tables '
         'from different places.</p>')
+    add('<h3 id="favorites">Favorites</h3>')
+    add('''<p>A favorite is a named set of ticked tables plus the format, the file and the pictures setting.
+The <b>Favorite</b> list in the window loads one, <b>Save as...</b> stores the current ticks under a name
+(an existing name is replaced after a question), and <b>Delete</b> removes one. They live in
+<code>IniFile</code>: the names in <code>[MIE__Tables] Favorites=</code>, separated by <code>|</code>, and each
+favorite in its own <code>[MIE__Favorite name]</code> section. Names are matched in any case and can't contain
+<code>| [ ] = ; ,</code>.</p>''')
+    add(code("MIE_ExportTables('@Month end')                     ! window opens with the favorite loaded\n"
+             "\n"
+             "IF MIE.LoadFavorite('Month end') = 0               ! or no window at all\n"
+             "  MIE.ExportTables()\n"
+             "END"))
     add('<h2 id="saved"><span class="k">How-to</span>Saved mappings</h2>')
     add('<p>After every successful run the window calls <code>SaveMap</code>, and the generated procedure calls '
         '<code>LoadMap</code> before it opens the window. Each field line holds '
@@ -871,7 +886,7 @@ dictionary's relations; <i>Replace all</i> deletes through <code>Access:</code> 
     add(nextcards(['template-guide.html', 'reference.html', 'getting-started.html']))
     nav = [('Concepts', [('parts', ''), ('tsv', ''), ('fields', ''), ('automap', ''), ('modes', ''),
                          ('values', '')]),
-           ('Formats', [('formats', ''), ('excel', ''), ('multi', '')]),
+           ('Formats', [('formats', ''), ('excel', ''), ('multi', ''), ('favorites', '')]),
            ('How-to', [('saved', ''), ('headless', ''), ('derive', ''), ('results', '')]),
            ('Clarion notes', [('notes', ''), ('n-any', ''), ('n-slice', ''), ('n-time', ''), ('n-run', ''),
                               ('n-dos', ''), ('n-ansi', ''), ('n-abc', ''), ('n-tpl', '')]),
@@ -1032,7 +1047,10 @@ and XLS, a collection per table in JSON, an element per table in XML, and a file
 It offers every table <code>MIE_ImportExport</code> offers and remembers the ticked tables, the format and
 the file in the <code>[MIE__Tables]</code> INI section. Pass table labels to pre-tick them:</p>''')
     add(code("MIE_ExportTables()                                ! last selection\n"
-             "MIE_ExportTables('Customer, Product, Invoice')    ! exactly these, any case"))
+             "MIE_ExportTables('Customer, Product, Invoice')    ! exactly these, any case\n"
+             "MIE_ExportTables('@Month end')                    ! a favorite saved in the window"))
+    add('<p>The code template\'s <b>Export several tables</b> mode has a <b>Start with favorite</b> prompt that '
+        'generates the <code>@</code> form.</p>')
     add('<p>Each table is exported with the columns, order and headers saved for it in '
         '<code>MIE_ImportExport</code>, and the rule embeds (<code>ExportFilter</code>) apply per table as '
         'usual.</p>')
@@ -1199,10 +1217,11 @@ derived class only.</p>''')
     add('<p>Generated beside it: the multi-table export window over every offered table.</p>')
     add(code("MIE_ExportTables(<STRING pTables>),BYTE,PROC"))
     add(table(['Parameter', 'Meaning'], [
-        ['<code>pTables</code>', 'Optional comma-separated table labels to tick; omitted, the tables ticked last time are ticked.'],
+        ['<code>pTables</code>', 'Optional comma-separated table labels to tick, or <code>@</code> and the name of a saved favorite, which also restores its format and file. Omitted, the tables ticked last time are ticked.'],
         ['returns', '1 when something was exported, 0 when the user cancelled or it failed.'],
     ]))
-    add(usecode("MIE_ExportTables('Customer,Product,Invoice')     ! pre-ticked, user picks format and file"))
+    add(usecode("MIE_ExportTables('Customer,Product,Invoice')     ! pre-ticked, user picks format and file\n"
+                "MIE_ExportTables('@Month end')                   ! a saved favorite"))
 
     add('<h2 id="helper"><span class="k">Helper</span>MIEConvert.exe</h2>')
     add('<p>The class runs it for you, but it is an ordinary command-line program and can be used from scripts. '

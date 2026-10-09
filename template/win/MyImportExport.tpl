@@ -383,6 +383,11 @@ MIE_ExportTables()
 #ENDENABLE
 #PROMPT('&Mode:',DROP('Ask the user|Export|Import|Export several tables')),%MIECallMode,DEFAULT('Ask the user')
 #DISPLAY('Export several tables: the user ticks the tables; the table prompt is ignored.')
+#ENABLE(%MIECallMode='Export several tables'),CLEAR
+  #PROMPT('Start with &favorite (optional):',@s40),%MIECallFavorite,DEFAULT('')
+  #DISPLAY('A favorite saved in the Export tables window: its tables are ticked')
+  #DISPLAY('and its format and file filled in when the window opens.')
+#ENDENABLE
 #PROMPT('Store the &result in (optional):',FIELD),%MIECallResult,DEFAULT('')
 #DISPLAY('Result: 1 = something was imported / exported, 0 = cancelled / failed.')
 #PROMPT('Re&fresh the window when the result is 1',CHECK),%MIECallRefresh,DEFAULT(0),AT(10)
@@ -407,7 +412,11 @@ MIE_ExportTables()
   #SET(%MIECallModeEquate,'0')
 #ENDCASE
 #IF(%MIECallMode='Export several tables')
-  #SET(%MIECallExpr,'MIE_ExportTables()')
+  #IF(%MIECallFavorite)
+    #SET(%MIECallExpr,'MIE_ExportTables(''@' & QUOTE(%MIECallFavorite) & ''')')
+  #ELSE
+    #SET(%MIECallExpr,'MIE_ExportTables()')
+  #ENDIF
 #ELSE
   #SET(%MIECallExpr,'MIE_ImportExport(''' & %MIECallTableName & ''',' & %MIECallModeEquate & ')')
 #ENDIF

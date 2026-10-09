@@ -8,6 +8,7 @@
     MODULE('Win32')
       MIE_GetModuleFileName(LONG hModule,*CSTRING lpFilename,LONG nSize),LONG,PASCAL,RAW,NAME('GetModuleFileNameA')
       MIE_GetTempPath(LONG nBufferLength,*CSTRING lpBuffer),LONG,PASCAL,RAW,NAME('GetTempPathA')
+      MIE_WriteProfile(*CSTRING lpSection,LONG lpKey,LONG lpValue,*CSTRING lpFile),LONG,PASCAL,RAW,PROC,NAME('WritePrivateProfileStringA')
     END
   END
 
@@ -1326,39 +1327,166 @@ RestoreSettings ROUTINE
   SELF.XmlRow      = SaveRow
 
 MyImportExportClass.SaveTablesMap PROCEDURE
-Sec                    CSTRING(40)
+  CODE
+  IF SELF.IniFile = '' THEN RETURN.
+  SELF.WriteTableSet('MIE__Tables')
+  PUTINI('MIE__Tables','Favorite',SELF.Favorite,SELF.IniFile)
+
+MyImportExportClass.LoadTablesMap PROCEDURE
+  CODE
+  IF SELF.IniFile = '' THEN RETURN.
+  IF SELF.ReadTableSet('MIE__Tables') THEN RETURN.
+  SELF.Favorite = GETINI('MIE__Tables','Favorite','',SELF.IniFile)
+  IF SELF.FavoriteIndex(SELF.Favorite) = 0 THEN SELF.Favorite = ''.
+
+! the ticked tables, format, file and pictures flag -> one INI section
+MyImportExportClass.WriteTableSet PROCEDURE(STRING pSection)
 L                      CSTRING(8192)
 I                      LONG
   CODE
-  IF SELF.IniFile = '' THEN RETURN.
-  Sec = 'MIE__Tables'
-  PUTINI(Sec,'Format',SELF.Format,SELF.IniFile)
-  PUTINI(Sec,'FileName',SELF.FileName,SELF.IniFile)
-  PUTINI(Sec,'UsePictures',SELF.UsePictures,SELF.IniFile)
+  PUTINI(pSection,'Format',SELF.Format,SELF.IniFile)
+  PUTINI(pSection,'FileName',SELF.FileName,SELF.IniFile)
+  PUTINI(pSection,'UsePictures',SELF.UsePictures,SELF.IniFile)
   LOOP I = 1 TO RECORDS(SELF.Tables)
     GET(SELF.Tables,I)
     IF NOT SELF.Tables.Selected THEN CYCLE.
     IF LEN(L) + LEN(CLIP(SELF.Tables.Name)) + 2 > SIZE(L) - 1 THEN BREAK.
     L = L & CHOOSE(L = '','',',') & CLIP(SELF.Tables.Name)
   END
-  PUTINI(Sec,'Selected',L,SELF.IniFile)
+  PUTINI(pSection,'Selected',L,SELF.IniFile)
 
-MyImportExportClass.LoadTablesMap PROCEDURE
-Sec                    CSTRING(40)
+! 1 = the section is not there (nothing changed)
+MyImportExportClass.ReadTableSet PROCEDURE(STRING pSection)
 L                      CSTRING(8192)
 I                      LONG
   CODE
-  IF SELF.IniFile = '' THEN RETURN.
-  Sec = 'MIE__Tables'
-  IF GETINI(Sec,'Format','',SELF.IniFile) = '' THEN RETURN.
-  SELF.Format      = GETINI(Sec,'Format',SELF.Format,SELF.IniFile)
-  SELF.FileName    = GETINI(Sec,'FileName',SELF.FileName,SELF.IniFile)
-  SELF.UsePictures = GETINI(Sec,'UsePictures',SELF.UsePictures,SELF.IniFile)
-  L = ',' & UPPER(GETINI(Sec,'Selected','',SELF.IniFile)) & ','
+  IF GETINI(pSection,'Format','',SELF.IniFile) = '' THEN RETURN 1.
+  SELF.Format      = GETINI(pSection,'Format',SELF.Format,SELF.IniFile)
+  SELF.FileName    = GETINI(pSection,'FileName',SELF.FileName,SELF.IniFile)
+  SELF.UsePictures = GETINI(pSection,'UsePictures',SELF.UsePictures,SELF.IniFile)
+  L = ',' & UPPER(GETINI(pSection,'Selected','',SELF.IniFile)) & ','
   LOOP I = 1 TO RECORDS(SELF.Tables)
     GET(SELF.Tables,I)
     SELF.Tables.Selected = CHOOSE(INSTRING(',' & UPPER(CLIP(SELF.Tables.Name)) & ',',L,1,1) > 0,1,0)
     PUT(SELF.Tables)
+  END
+  RETURN 0
+
+!----------------------------------------------------------------------------
+! Favorites: [MIE__Tables] Favorites=Month end|Price list
+!            [MIE__Favorite Month end] Format=, FileName=, UsePictures=, Selected=
+!----------------------------------------------------------------------------
+MyImportExportClass.FavoriteNames PROCEDURE
+  CODE
+  IF SELF.IniFile = '' THEN RETURN ''.
+  RETURN GETINI('MIE__Tables','Favorites','',SELF.IniFile)
+
+MyImportExportClass.FavoriteClean PROCEDURE(STRING pName)
+R                      CSTRING(41)
+I                      LONG
+  CODE
+  LOOP I = 1 TO LEN(CLIP(pName))
+    IF INSTRING(pName[I],'|[]=;,',1,1) THEN CYCLE.
+    IF R = '' AND pName[I] = ' ' THEN CYCLE.
+    IF LEN(R) >= 40 THEN BREAK.
+    R = R & pName[I]
+  END
+  RETURN CLIP(R)
+
+! position (1..n) of the favorite in FavoriteNames, 0 = none (case-insensitive)
+MyImportExportClass.FavoriteIndex PROCEDURE(STRING pName)
+L                      CSTRING(4096)
+N                      CSTRING(41)
+P                      LONG
+Q                      LONG
+K                      LONG
+  CODE
+  N = UPPER(SELF.FavoriteClean(pName))
+  IF N = '' THEN RETURN 0.
+  L = UPPER(SELF.FavoriteNames()) & '|'
+  P = 1
+  LOOP
+    Q = INSTRING('|',L,1,P)
+    IF Q = 0 THEN BREAK.
+    K += 1
+    IF Q > P AND L[P : Q-1] = N THEN RETURN K.
+    P = Q + 1
+  END
+  RETURN 0
+
+! the name at position pIndex, as it was saved
+MyImportExportClass.FavoriteName PROCEDURE(LONG pIndex)
+L                      CSTRING(4096)
+P                      LONG
+Q                      LONG
+K                      LONG
+  CODE
+  L = SELF.FavoriteNames() & '|'
+  P = 1
+  LOOP
+    Q = INSTRING('|',L,1,P)
+    IF Q = 0 THEN BREAK.
+    K += 1
+    IF K = pIndex AND Q > P THEN RETURN L[P : Q-1].
+    P = Q + 1
+  END
+  RETURN ''
+
+MyImportExportClass.SaveFavorite PROCEDURE(STRING pName)
+N                      CSTRING(41)
+L                      CSTRING(4096)
+  CODE
+  N = SELF.FavoriteClean(pName)
+  IF N = '' OR SELF.IniFile = '' THEN RETURN 1.
+  IF SELF.FavoriteIndex(N)
+    N = SELF.FavoriteName(SELF.FavoriteIndex(N))          ! keep the saved spelling
+  ELSE
+    L = SELF.FavoriteNames()
+    IF LEN(L) + LEN(N) + 2 > SIZE(L) - 1 THEN RETURN 1.
+    L = L & CHOOSE(L = '','','|') & N
+    PUTINI('MIE__Tables','Favorites',L,SELF.IniFile)
+  END
+  SELF.WriteTableSet('MIE__Favorite ' & N)
+  SELF.Favorite = N
+  PUTINI('MIE__Tables','Favorite',N,SELF.IniFile)
+  RETURN 0
+
+MyImportExportClass.LoadFavorite PROCEDURE(STRING pName)
+N                      CSTRING(41)
+  CODE
+  N = SELF.FavoriteClean(pName)
+  IF SELF.IniFile = '' OR SELF.FavoriteIndex(N) = 0 THEN RETURN 1.
+  N = SELF.FavoriteName(SELF.FavoriteIndex(N))
+  IF SELF.ReadTableSet('MIE__Favorite ' & N) THEN RETURN 1.
+  SELF.Favorite = N
+  RETURN 0
+
+MyImportExportClass.DeleteFavorite PROCEDURE(STRING pName)
+N                      CSTRING(41)
+Sec                    CSTRING(64)
+L                      CSTRING(4096)
+R                      CSTRING(4096)
+P                      LONG
+Q                      LONG
+  CODE
+  N = SELF.FavoriteClean(pName)
+  IF SELF.IniFile = '' OR SELF.FavoriteIndex(N) = 0 THEN RETURN.
+  L = SELF.FavoriteNames() & '|'
+  P = 1
+  LOOP
+    Q = INSTRING('|',L,1,P)
+    IF Q = 0 THEN BREAK.
+    IF Q > P AND UPPER(L[P : Q-1]) <> UPPER(N)
+      R = R & CHOOSE(R = '','','|') & L[P : Q-1]
+    END
+    P = Q + 1
+  END
+  PUTINI('MIE__Tables','Favorites',R,SELF.IniFile)
+  Sec = 'MIE__Favorite ' & N
+  MIE_WriteProfile(Sec,0,0,SELF.IniFile)              ! drop the whole section
+  IF UPPER(SELF.Favorite) = UPPER(N)
+    SELF.Favorite = ''
+    PUTINI('MIE__Tables','Favorite','',SELF.IniFile)
   END
 
 !============================================================================
@@ -1381,16 +1509,30 @@ UseIcon                  LONG
 Name                     STRING(100)
 Description              STRING(128)
                        END
+LocFav                 STRING(40)
+FavName                STRING(40)
+FavOk                  BYTE
+P                      LONG
+Q                      LONG
+FavList                CSTRING(4096)
+FavQ                   QUEUE
+Name                     STRING(40)
+                       END
 Window WINDOW('Export tables'),AT(,,424,300),FONT('Segoe UI',9,,FONT:regular),CENTER,GRAY,SYSTEM,DOUBLE
        BOX,AT(0,0,424,30),USE(?Band),COLOR(05F3A1FH),FILL(05F3A1FH)
        STRING('Export tables'),AT(10,3),USE(?Title),TRN,FONT(,13,COLOR:White,FONT:bold)
        STRING('Several tables into one file'),AT(10,18,400,10),USE(?SubTitle),TRN,FONT(,9,0E8D8C8H)
-       PROMPT('Tables:'),AT(8,38),USE(?TablesPrompt)
-       LIST,AT(8,50,330,150),USE(?TableList),VSCROLL,FROM(TabQ),ALRT(MouseLeft2),ALRT(SpaceKey), |
+       PROMPT('Fa&vorite:'),AT(8,38),USE(?FavPrompt)
+       LIST,AT(52,36,190,12),USE(LocFav),DROP(12),FROM(FavQ),FORMAT('160L(2)@s40@'), |
+           TIP('Pick a saved set of tables: ticks them and restores the format and file')
+       BUTTON('&Save as...'),AT(248,35,50,14),USE(?FavSave),TIP('Save the ticked tables, format and file as a favorite')
+       BUTTON('&Delete'),AT(302,35,36,14),USE(?FavDelete),TIP('Delete the chosen favorite')
+       PROMPT('Tables:'),AT(8,56),USE(?TablesPrompt)
+       LIST,AT(8,68,330,132),USE(?TableList),VSCROLL,FROM(TabQ),ALRT(MouseLeft2),ALRT(SpaceKey), |
            FORMAT('20C|I~Use~@s1@100L(2)|~Table~@s100@200L(2)~Description~@s128@')
-       BUTTON('Select &All'),AT(344,50,72,14),USE(?SelectAll)
-       BUTTON('Select &None'),AT(344,68,72,14),USE(?SelectNone)
-       STRING(''),AT(344,90,72,10),USE(?Count),FONT(,8,COLOR:Gray)
+       BUTTON('Select &All'),AT(344,68,72,14),USE(?SelectAll)
+       BUTTON('Select &None'),AT(344,86,72,14),USE(?SelectNone)
+       STRING(''),AT(344,108,72,10),USE(?Count),FONT(,8,COLOR:Gray)
        PROMPT('Format:'),AT(8,212),USE(?FormatPrompt)
        LIST,AT(52,210,64,12),USE(LocFormat),DROP(6),FROM('XLSX|XLS|JSON|XML|CSV|TSV')
        STRING(''),AT(124,212,292,10),USE(?FormatNote)
@@ -1404,6 +1546,14 @@ Window WINDOW('Export tables'),AT(,,424,300),FONT('Segoe UI',9,,FONT:regular),CE
        BUTTON('&Export'),AT(306,278,54,16),USE(?Run),DEFAULT
        BUTTON('&Close'),AT(364,278,52,16),USE(?Close)
      END
+NameWin WINDOW('Save favorite'),AT(,,240,74),FONT('Segoe UI',9,,FONT:regular),CENTER,GRAY,SYSTEM,DOUBLE
+       BOX,AT(0,0,240,4),USE(?NameBand),COLOR(05F3A1FH),FILL(05F3A1FH)
+       PROMPT('Name of the favorite:'),AT(8,12),USE(?NamePrompt)
+       ENTRY(@s40),AT(8,24,224,12),USE(FavName)
+       STRING('Saves the ticked tables, the format and the file.'),AT(8,40,224,10),USE(?NameHint),FONT(,8,COLOR:Gray)
+       BUTTON('&Save'),AT(124,54,52,16),USE(?NameOk),DEFAULT
+       BUTTON('Cancel'),AT(180,54,52,16),USE(?NameCancel)
+     END
   CODE
   LocFormat   = CHOOSE(SELF.Format = '','XLSX',UPPER(SELF.Format))
   LocFile     = SELF.FileName
@@ -1412,6 +1562,8 @@ Window WINDOW('Export tables'),AT(,,424,300),FONT('Segoe UI',9,,FONT:regular),CE
   ?TableList{PROP:IconList,1} = ICON:Tick
   SELF.ProgressControl = ?Progress
   SELF.StatusControl   = ?Status
+  LocFav = SELF.Favorite
+  DO LoadFavList
   DO RefreshList
   DO ShowNote
   ACCEPT
@@ -1426,6 +1578,20 @@ Window WINDOW('Export tables'),AT(,,424,300),FONT('Segoe UI',9,,FONT:regular),CE
       END
     OF EVENT:Accepted
       CASE FIELD()
+      OF ?LocFav
+        IF LocFav <> '' AND SELF.LoadFavorite(LocFav) = 0
+          LocFormat   = CHOOSE(SELF.Format = '','XLSX',UPPER(SELF.Format))
+          LocFile     = SELF.FileName
+          LocPictures = SELF.UsePictures
+          ENABLE(?FavDelete)
+          DO RefreshList
+          DO ShowNote
+          ?Status{PROP:Text} = 'Favorite "' & CLIP(LocFav) & '" loaded'
+        END
+      OF ?FavSave
+        DO SaveFav
+      OF ?FavDelete
+        DO DeleteFav
       OF ?SelectAll
         LOOP I = 1 TO RECORDS(SELF.Tables)
           GET(SELF.Tables,I)
@@ -1464,6 +1630,93 @@ Window WINDOW('Export tables'),AT(,,424,300),FONT('Segoe UI',9,,FONT:regular),CE
   SELF.StatusControl   = 0
   CLOSE(Window)
   RETURN Result
+
+LoadFavList ROUTINE
+  FREE(FavQ)
+  FavList = SELF.FavoriteNames() & '|'
+  P = 1
+  LOOP
+    Q = INSTRING('|',FavList,1,P)
+    IF Q = 0 THEN BREAK.
+    IF Q > P
+      FavQ.Name = FavList[P : Q-1]
+      ADD(FavQ,+FavQ.Name)
+    END
+    P = Q + 1
+  END
+  IF RECORDS(FavQ) = 0
+    LocFav = ''
+    DISABLE(?LocFav)
+    DISABLE(?FavDelete)
+  ELSE
+    ENABLE(?LocFav)
+    IF LocFav = '' THEN DISABLE(?FavDelete) ELSE ENABLE(?FavDelete).
+  END
+  DISPLAY
+
+SaveFav ROUTINE
+  I = 0
+  LOOP J = 1 TO RECORDS(SELF.Tables)
+    GET(SELF.Tables,J)
+    IF SELF.Tables.Selected THEN I += 1.
+  END
+  IF I = 0
+    SELF.ShowMessage('Tick the tables to save in the favorite first.','Save favorite',ICON:Exclamation)
+    EXIT
+  END
+  IF SELF.IniFile = ''
+    SELF.ShowMessage('Favorites need an INI file (MIE.IniFile).','Save favorite',ICON:Exclamation)
+    EXIT
+  END
+  FavName = LocFav
+  FavOk   = 0
+  OPEN(NameWin)
+  ACCEPT
+    CASE EVENT()
+    OF EVENT:Accepted
+      CASE FIELD()
+      OF ?NameOk
+        FavName = SELF.FavoriteClean(FavName)
+        IF FavName = ''
+          SELF.ShowMessage('Please type a name.','Save favorite',ICON:Exclamation)
+          SELECT(?FavName)
+          CYCLE
+        END
+        IF SELF.FavoriteIndex(FavName) AND UPPER(FavName) <> UPPER(LocFav)
+          IF MESSAGE('A favorite called "' & CLIP(FavName) & '" already exists.<13,10>Do you want to replace it?', |
+                     'Save favorite',ICON:Question,BUTTON:Yes + BUTTON:No,BUTTON:No) <> BUTTON:Yes
+            SELECT(?FavName)
+            CYCLE
+          END
+        END
+        FavOk = 1
+        POST(EVENT:CloseWindow)
+      OF ?NameCancel
+        POST(EVENT:CloseWindow)
+      END
+    END
+  END
+  CLOSE(NameWin)
+  IF NOT FavOk THEN EXIT.
+  SELF.Format      = LocFormat
+  SELF.FileName    = CLIP(LocFile)
+  SELF.UsePictures = LocPictures
+  IF SELF.SaveFavorite(FavName)
+    SELF.ShowMessage('The favorite could not be saved.','Save favorite',ICON:Exclamation)
+    EXIT
+  END
+  LocFav = SELF.Favorite
+  DO LoadFavList
+  ?Status{PROP:Text} = 'Favorite "' & CLIP(LocFav) & '" saved'
+
+DeleteFav ROUTINE
+  IF LocFav = '' THEN EXIT.
+  IF MESSAGE('Delete the favorite "' & CLIP(LocFav) & '"?<13,10>The tables themselves are not touched.', |
+             'Delete favorite',ICON:Question,BUTTON:Yes + BUTTON:No,BUTTON:No) <> BUTTON:Yes THEN EXIT.
+  SELF.DeleteFavorite(LocFav)
+  ?Status{PROP:Text} = 'Favorite "' & CLIP(LocFav) & '" deleted'
+  LocFav = ''
+  DO LoadFavList
 
 RefreshList ROUTINE
   C = CHOICE(?TableList)
